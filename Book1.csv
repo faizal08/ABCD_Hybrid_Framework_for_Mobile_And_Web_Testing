@@ -1,0 +1,45 @@
+﻿Step,Test Case ID,Description,Action,Value,XPath
+1,TC_CA_3_Add_Driver,Click on the "Drivers" Menu,click,Drivers,//span[normalize-space()='Drivers']
+2,TC_CA_3_Add_Driver,Click on the "Add Driver",click,Add Driver,//span[normalize-space()='Add Driver']
+3,TC_CA_3_Add_Driver,Verify on that "Add Driver" is display,verifyvisible,Add Driver,"//div[@class='d-inline']//span[contains(text(),'Add')]"
+4,TC_CA_3_Add_Driver,Select "Taxi Ride",select,Taxi Ride,//select[@id='service_cat_id']
+5,TC_CA_3_Add_Driver,Enter the Driver full Name "RafiAbdhullahUnique",type,RafiAbdhullahUnique,//input[@id='name']
+6,TC_CA_3_Add_Driver,Enter the Email "RafiAbdhullahUnique@gmail.com",type,RafiAbdhullahUnique@gmail.com,//input[@id='email']
+7,TC_CA_3_Add_Driver,Enter the contact number "9998745623",type,9998745623,//input[@id='phone']
+8,TC_CA_3_Add_Driver,Click on the "male",click,male,//label[@for='male']
+9,TC_CA_3_Add_Driver,Click on that image upload,click,,//input[@id='image-upload']
+10,TC_CA_3_Add_Driver,Upload Image (Robot),robotupload,C:\Driverimage\Driver.jpg,
+11,TC_CA_3_Add_Driver,Select Vehicle Type "Hatchback",select,Hatchback,//select[@id='vehicle_type_id']
+12,TC_CA_3_Add_Driver,Enter the Vehicle Company "BMW",type,BMW,//input[@id='vehicle_company']
+13,TC_CA_3_Add_Driver,Enter the Model Name "s1",type,s1,//input[@id='model_name']
+14,TC_CA_3_Add_Driver,Select the number of seat "4",select,4,//select[@id='no_of_seat']
+15,TC_CA_3_Add_Driver,Click on that model year,click,,//span[@class='fa fa-th']
+16,TC_CA_3_Add_Driver,Select that "2024",select,2024,//span[normalize-space()='2024']
+17,TC_CA_3_Add_Driver,Enter the plat no "TN22CL5170",type,TN22CL5170,//input[@id='plat_no']
+18,TC_CA_3_Add_Driver,Enter the Vehicle color "Black",type,Black,//input[@id='vehicle_color']
+19,TC_CA_3_Add_Driver,Click on the vehicle image upload,click,,//input[@id='vehicle-image-upload']
+20,TC_CA_3_Add_Driver,Upload Image (Robot),robotupload,C:\Vehicle Image\Vehicle.jpg,
+21,TC_CA_3_Add_Driver,Enter the Bank Name "ICICI",type,ICICI,//input[@id='bank_name']
+22,TC_CA_3_Add_Driver,Enter the Account Number "745869321124",type,745869321124,//input[@id='account_number']
+23,TC_CA_3_Add_Driver,Enter the payment email address "we1driver@gmail.com",type,we1driver@gmail.com,//input[@id='payment_email']
+24,TC_CA_3_Add_Driver,Enter the CityName "chennai",type,chennai,//input[@id='bank_location']
+25,TC_CA_3_Add_Driver,Enter the IFSC code "ICICI265653",type,ICICI265653,//input[@id='bic_swift_code']
+26,TC_CA_3_Add_Driver,Enter the Account Holder Name "sheik",type,sheik,//input[@id='holder_name']
+27,TC_CA_3_Add_Driver,Click on the "Save",click,Save,//button[@type='submit']
+28,TC_CA_3_Add_Driver,Wait for page load,wait,5000,
+29,TC_CA_3_Add_Driver,Click on the "Drivers" Menu,click,Drivers,//span[normalize-space()='Drivers']
+30,TC_CA_3_Add_Driver,Click on "Approved Drivers",click,Approved Drivers,//span[normalize-space()='Approved Drivers']
+31,TC_CA_3_Add_Driver,Verify Driver Email "RafuAbdhullah@gmail.com",verifyvisible,RafuAbdhullah@gmail.com,"//td[contains(text(),'RafuAbdhullah@gmail.com')]"
+32,TC_CA_3_Add_Driver,Verify Driver Phone "9998745623",verifyvisible,9998745623,"//td[contains(text(),'9998745623')]"
+33,TC_CA_3_Add_Driver,Click + Icon on Driver,click,,"//tr[.//td[contains(text(),'RafuAbdhullah@gmail.com')]]//a[not(contains(@href,'wallet'))]//i[contains(@class,'fa-plus')]"
+34,TC_CA_3_Add_Driver,Click Documents Link,click,Documents,//a[normalize-space()='Documents']
+35,TC_CA_3_Add_Driver,Verify Documents Page,verifyvisible,Driver Required Documents,"//h1[contains(text(),'Driver Required Documents')]"
+36,TC_CA_3_Add_Driver,Verify View Icon,verifyvisible,View Icon,//i[contains(@class,'fa-eye')]
+37,TC_CA_3_Add_Driver,Verify Approve Icon,verifyvisible,Approve Icon,//i[contains(@class,'fa-check')]
+38,TC_CA_3_Add_Driver,Verify Reject Icon,verifyvisible,Reject Icon,//i[contains(@class,'fa-times') or contains(@class,'fa-ban')]
+
+
+
+
+
+

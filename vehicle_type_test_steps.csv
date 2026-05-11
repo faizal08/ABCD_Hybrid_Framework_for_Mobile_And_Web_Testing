@@ -1,0 +1,18 @@
+Step,Test Case ID,Description,Action,Value,XPath,
+1,TC_Transport_001,Click Settings Menu,click,,//a[normalize-space()='Settings'],
+2,TC_Transport_001,"Click ""Vehicle Type"" Link",click,,//a[contains(@href,'vehicle-type')]
+3,TC_Transport_001,"Click ""Add Vehicle Type"" Button",click,,//a[contains(text(),'Add Vehicle Type')]
+4,TC_Transport_001,"Enter Vehicle Name ""Sedan""",type,Sedan,//input[@id='name'],
+5,TC_Transport_001,"Click ""Vehicle Type Image""",click,,//input[@id='icon'],
+6,TC_Transport_001,Upload Image (AutoIT),autoit,C:\Automation\Scripts\upload_image.exe,C:\Data\sedan_image.jpg,
+7,TC_Transport_001,"Enter Cost Per Km ""10""",type,10,//input[@id='cost_for_km'],
+8,TC_Transport_001,"Enter Time Fare ""2""",type,2,//input[@id='time_fare'],
+9,TC_Transport_001,"Enter Base Fare ""50""",type,50,//input[@id='base_fare'],
+10,TC_Transport_001,"Enter Min Fare Amount ""100""",type,100,//input[@id='min_fare_amount'],
+11,TC_Transport_001,"Enter Rental Cost Per Km ""15""",type,15,//input[@id='rental_cost_for_km'],
+12,TC_Transport_001,"Enter Rental Amount 1 Hour ""200""",type,200,//input[@id='rental_amount_for_1hour'],
+13,TC_Transport_001,"Enter Rental Km Limit ""20""",type,20,//input[@id='rental_km_limit_for_1hour'],
+14,TC_Transport_001,Select Status Activate,select,Active,//select[@id='status'],
+15,TC_Transport_001,Enter Description,type,Standard Sedan Vehicle,//textarea[@name='description'],
+16,TC_Transport_001,"Click ""Save"" Button",click,,//button[@type='submit'],
+17,TC_Transport_001,Verify Success Message,verifyvisible,,//div[contains(@class,'bootstrap-growl')]

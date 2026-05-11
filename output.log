@@ -1,0 +1,45 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< com.intellitest:intellitest-prototype >----------------
+[INFO] Building intellitest-prototype 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ intellitest-prototype ---
+[INFO] skip non existing resourceDirectory C:\Users\EIT\abcd testing framework\ABCD_Testing_Framework\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.10.1:compile (default-compile) @ intellitest-prototype ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 27 source files to C:\Users\EIT\abcd testing framework\ABCD_Testing_Framework\target\classes
+[INFO] /C:/Users/EIT/abcd testing framework/ABCD_Testing_Framework/src/main/java/com/eit/automation/actions/InputActions.java: Some input files use or override a deprecated API.
+[INFO] /C:/Users/EIT/abcd testing framework/ABCD_Testing_Framework/src/main/java/com/eit/automation/actions/InputActions.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- exec:3.1.0:java (default-cli) @ intellitest-prototype ---
+? Report initialized at: test-reports/report_2026-01-31_20-30-59/TestReport.html
+=== ? EIT Test Automation Started ===
+
+? Configuration loaded
+? Test execution started at: 2026-01-31_20-30-59
+? Reading test cases from: Book1.csv
+? Test execution error: No valid entries or contents found, this is not a valid OOXML (Office Open XML) file
+org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException: No valid entries or contents found, this is not a valid OOXML (Office Open XML) file
+	at org.apache.poi.openxml4j.util.ZipArchiveThresholdInputStream.getNextEntry(ZipArchiveThresholdInputStream.java:159)
+	at org.apache.poi.openxml4j.util.ZipInputStreamZipEntrySource.<init>(ZipInputStreamZipEntrySource.java:94)
+	at org.apache.poi.openxml4j.opc.ZipPackage.<init>(ZipPackage.java:157)
+	at org.apache.poi.openxml4j.opc.OPCPackage.open(OPCPackage.java:351)
+	at org.apache.poi.ooxml.util.PackageHelper.open(PackageHelper.java:64)
+	at org.apache.poi.xssf.usermodel.XSSFWorkbook.<init>(XSSFWorkbook.java:313)
+	at org.apache.poi.xssf.usermodel.XSSFWorkbook.<init>(XSSFWorkbook.java:287)
+	at com.eit.automation.core.Main.main(Main.java:52)
+	at org.codehaus.mojo.exec.ExecJavaMojo$1.run(ExecJavaMojo.java:279)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.util.zip.ZipException: Unexpected record signature: 0x53bfbbef
+	at org.apache.commons.compress.archivers.zip.ZipArchiveInputStream.getNextZipEntry(ZipArchiveInputStream.java:770)
+	at org.apache.poi.openxml4j.util.ZipArchiveThresholdInputStream.getNextEntry(ZipArchiveThresholdInputStream.java:150)
+	... 9 more
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.204 s
+[INFO] Finished at: 2026-01-31T20:31:00+05:30
+[INFO] ------------------------------------------------------------------------

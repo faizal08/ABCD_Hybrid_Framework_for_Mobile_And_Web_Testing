@@ -1,0 +1,11 @@
+# Ignore Maven build output
+/target/
+
+# Ignore all test reports and the screenshots inside them
+test-reports/
+
+# Ignore IDE-specific files
+.classpath
+.factorypath
+.project
+.settings/
