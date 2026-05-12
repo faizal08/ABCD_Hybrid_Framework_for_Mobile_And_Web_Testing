@@ -1,3 +1,6 @@
+# IDE Specific Files
+.idea/
+
 # Ignore Maven build output
 /target/
 
