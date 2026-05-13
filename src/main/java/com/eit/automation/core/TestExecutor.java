@@ -13,6 +13,15 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.ios.IOSDriver;
+import io.appium.java_client.HidesKeyboard; // Essential for the hideKeyboard action
+import org.openqa.selenium.remote.DesiredCapabilities;
+import java.net.URL;
+import com.eit.automation.actions.MobileActions;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import com.eit.automation.actions.ClickActions;
 import com.eit.automation.actions.FileActions;
@@ -34,6 +43,11 @@ public class TestExecutor {
 	private WebDriver driver;
 	private WebDriverWait wait;
 
+	// --- NEW: Universal Session Management ---
+	private Map<String, WebDriver> driverPool = new HashMap<>(); // Stores Admin, User, and Driver sessions
+	private Map<String, WebDriverWait> waitPool = new HashMap<>(); // Stores corresponding wait objects
+	private String currentSessionRole = "web"; // Tracks who is currently active (e.g., "user", "driver", "admin")
+
 	// Action handlers
 	private WaitActions waitActions;
 	private ClickActions clickActions;
@@ -44,8 +58,9 @@ public class TestExecutor {
 	private ScrollActions scrollActions;
 	private AutoItActions autoItActions;
 
-	private ActionRegistry actionRegistry; // NEW
-	private PageObjectManager pageObjectManager; // NEW
+	private MobileActions mobileActions;
+	private ActionRegistry actionRegistry;
+	private PageObjectManager pageObjectManager;
 
 	private ReportGenerator reportGenerator;
 
@@ -66,74 +81,103 @@ public class TestExecutor {
 	public TestExecutor() {
 		log("");
 		log("╔════════════════════════════════════════════════════════════════════════════════╗");
-		log("║                        INITIALIZING TEST EXECUTOR                              ║");
+		log("║                        INITIALIZING UNIVERSAL EXECUTOR                         ║");
 		log("╚════════════════════════════════════════════════════════════════════════════════╝");
 
-		io.github.bonigarcia.wdm.WebDriverManager.chromedriver().setup();
-		log("→ WebDriverManager: Checked and updated ChromeDriver to match Chrome browser");
-
-		ChromeOptions options = new ChromeOptions();
-
-		// --- OPTIONAL: Headless Mode (Uncomment for Hosting/CI-CD) ---
-		// log("→ Setting Headless Mode: OFF (Development Mode)");
-		// options.addArguments("--headless=new");
-		// options.addArguments("--window-size=1920,1080");
-		// options.addArguments("--disable-gpu");
-
-		// --- NEW: Disable Password Manager & Data Breach Popups ---
-		Map<String, Object> prefs = new HashMap<>();
-		prefs.put("credentials_enable_service", false); // Disables the "Save Password" prompt
-		prefs.put("profile.password_manager_enabled", false); // Disables password manager entirely
-		prefs.put("autofill.profile_enabled", false); // Disables address/form autofill
-		prefs.put("profile.password_manager_leak_detection", false); // Disables the "Data Breach" popup
-		options.setExperimentalOption("prefs", prefs);
-
-		// --- Standard Arguments ---
-		options.addArguments("--start-maximized");
-		options.addArguments("--disable-notifications");
-		options.addArguments("--disable-features=SafeBrowsingPasswordCheck"); // Specifically targets the breach popup
-		options.setExperimentalOption("detach", true); // Keep browser open
-		options.setExperimentalOption("excludeSwitches", new String[]{"enable-automation"}); // Hides "Chrome is being controlled" bar
-
-		log("→ Creating ChromeDriver");
-		log("  • Start maximized: Yes");
-		log("  • Disable notifications: Yes");
-		log("  • Disable Password Manager: Yes"); // Added for logging
-		this.driver = new ChromeDriver(options);
-
-		this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-		log("  • Default wait timeout: 30 seconds");
-
-		log("→ Initializing action handlers");
-		this.waitActions = new WaitActions(driver, wait);
-		this.clickActions = new ClickActions(driver, wait, waitActions);
-		this.inputActions = new InputActions(driver, wait, waitActions);
-		this.verificationActions = new VerificationActions(driver, wait, waitActions);
-		this.fileActions = new FileActions(driver, wait, waitActions);
-		this.toastActions = new ToastActions(driver, wait, waitActions);
-		this.scrollActions = new ScrollActions(driver, wait, waitActions);
-		this.autoItActions = new AutoItActions(driver, wait, waitActions);
-		log("✓ All action handlers ready");
-		log("");
+		// Start with a default Web session (Super Admin)
+		initializeWebDriver("web");
 	}
 
 	public TestExecutor(ReportGenerator reportGenerator, Properties config) {
-		this();
 		this.reportGenerator = reportGenerator;
 		this.config = config;
+
+		// Initialize the name from config
 		String fullPath = config.getProperty("excel.name");
 		this.excelName = (fullPath != null) ? fullPath.split("\\.")[0] : "Unknown_Excel";
+
+		// Call the setup logic
+		log("");
+		log("╔════════════════════════════════════════════════════════════════════════════════╗");
+		log("║                        INITIALIZING UNIVERSAL EXECUTOR                         ║");
+		log("╚════════════════════════════════════════════════════════════════════════════════╝");
+
+		// Setup initial default session
+		initializeWebDriver("web");
+
 		log("✓ Report generator configured");
 		log("");
 	}
 
 	/**
+	 * Preserves all your existing Chrome functionalities while adding them to the Pool
+	 */
+	public void initializeWebDriver(String role) {
+		log("→ Setting up Chrome Browser for Role: " + role.toUpperCase());
+
+		io.github.bonigarcia.wdm.WebDriverManager.chromedriver().setup();
+		log("  • WebDriverManager: Synchronized ChromeDriver");
+
+		ChromeOptions options = new ChromeOptions();
+
+		// --- PRESERVED: Your exact original Preferences ---
+		Map<String, Object> prefs = new HashMap<>();
+		prefs.put("credentials_enable_service", false);
+		prefs.put("profile.password_manager_enabled", false);
+		prefs.put("autofill.profile_enabled", false);
+		prefs.put("profile.password_manager_leak_detection", false);
+		options.setExperimentalOption("prefs", prefs);
+
+		// --- PRESERVED: Your exact original Arguments ---
+		options.addArguments("--start-maximized");
+		options.addArguments("--disable-notifications");
+		options.addArguments("--disable-features=SafeBrowsingPasswordCheck");
+		options.setExperimentalOption("detach", true);
+		options.setExperimentalOption("excludeSwitches", new String[]{"enable-automation"});
+
+		WebDriver newDriver = new ChromeDriver(options);
+		WebDriverWait newWait = new WebDriverWait(newDriver, Duration.ofSeconds(30));
+
+		// Add to Universal Pool
+		driverPool.put(role, newDriver);
+		waitPool.put(role, newWait);
+
+		// Set as active context
+		this.driver = newDriver;
+		this.wait = newWait;
+		this.currentSessionRole = role;
+
+		refreshActionHandlers();
+		log("✓ Web Session [" + role + "] is active and ready");
+	}
+
+	/**
+	 * Refreshes handlers to point to the current active driver/wait objects
+	 */
+	private void refreshActionHandlers() {
+		this.waitActions = new WaitActions(driver, wait);
+		this.clickActions = new ClickActions(driver, wait, waitActions);
+		this.inputActions = new InputActions(driver, wait, waitActions);
+		this.verificationActions = new VerificationActions(driver, wait, waitActions);
+
+		// Only initialize Web-specific actions if it's not a mobile driver
+		if (!(driver instanceof AppiumDriver)) {
+			this.fileActions = new FileActions(driver, wait, waitActions);
+			this.toastActions = new ToastActions(driver, wait, waitActions);
+			this.scrollActions = new ScrollActions(driver, wait, waitActions);
+			this.autoItActions = new AutoItActions(driver, wait, waitActions);
+		} else {
+			// Initialize Mobile Specifics
+			this.mobileActions = new MobileActions((AppiumDriver) driver, wait);
+		}
+	}
+
+	/**
 	 * Execute list of test steps - CONTINUES ON ERROR, DOESN'T CLOSE BROWSER
 	 */
-	public boolean run(String sheetName,List<TestStep> steps, String testCaseName) {
+	public boolean run(String sheetName, List<TestStep> steps, String testCaseName) {
 		long testStartTime = System.currentTimeMillis();
 
-		// Reset counters
 		totalStepsExecuted = 0;
 		passedSteps = 0;
 		failedSteps = 0;
@@ -151,22 +195,33 @@ public class TestExecutor {
 				reportGenerator.startTestCase(testCaseName);
 			}
 
-			// Execute all steps - CONTINUE EVEN ON ERROR
 			for (int i = 0; i < steps.size(); i++) {
 				TestStep step = steps.get(i);
 				int stepNumber = i + 1;
+				String action = step.getAction().toLowerCase();
 
-				updateBrowserOverlay(sheetName, testCaseName, stepNumber, step);
+				// --- NEW: UNIVERSAL SESSION SWITCHING ---
+				// If the action is 'switch_to', we handle it here before executeStep
+				if (action.equals("switch_to") || action.equals("switchsession")) {
+					logStepHeader(stepNumber, steps.size(), step);
+					switchSession(step.getValue()); // Role name like 'user' or 'driver'
+					passedSteps++;
+					totalStepsExecuted++;
+					continue;
+				}
+
+				// --- NEW: GUARD OVERLAY ---
+				// Only update the browser overlay if we are NOT on a mobile device
+				if (!(driver instanceof AppiumDriver)) {
+					updateBrowserOverlay(sheetName, testCaseName, stepNumber, step);
+				}
 
 				logStepHeader(stepNumber, steps.size(), step);
 
 				long stepStartTime = System.currentTimeMillis();
-				boolean stepPassed = false;
 
 				try {
-
 					executeStep(step);
-					stepPassed = true;
 					passedSteps++;
 
 					long stepDuration = System.currentTimeMillis() - stepStartTime;
@@ -178,20 +233,15 @@ public class TestExecutor {
 
 				} catch (Exception e) {
 					failedSteps++;
-
 					long stepDuration = System.currentTimeMillis() - stepStartTime;
 					logStepFailure(stepNumber, stepDuration, e);
 
 					if (reportGenerator != null) {
-						// Create detailed error message for HTML report
-						// Create detailed error message for HTML report
 						StringBuilder errorDetails = new StringBuilder();
-						errorDetails.append("❌ MUST FIX: ")
-								.append(e.getMessage() != null ? e.getMessage() : "Unknown Error").append("\n");
+						errorDetails.append("❌ MUST FIX: ").append(e.getMessage() != null ? e.getMessage() : "Unknown Error").append("\n");
 
 						if (e.getCause() != null) {
 							String causeMsg = e.getCause().getMessage();
-							// Clean up verbose Selenium info
 							if (causeMsg != null) {
 								int buildInfoIndex = causeMsg.indexOf("Build info:");
 								if (buildInfoIndex > 0) {
@@ -205,7 +255,6 @@ public class TestExecutor {
 						reportGenerator.logStep(stepNumber, step, "FAILED", errorDetails.toString(), driver);
 					}
 
-					// BREAK ON ERROR - FAIL FAST
 					log("❌ Aborting current test case due to failure...");
 					log("");
 					break;
@@ -221,7 +270,6 @@ public class TestExecutor {
 			long testDuration = System.currentTimeMillis() - testStartTime;
 			logTestSummary(testCaseName, testDuration);
 
-			// Return true only if ALL steps passed
 			return failedSteps == 0;
 
 		} catch (Exception e) {
@@ -235,13 +283,43 @@ public class TestExecutor {
 			return false;
 		}
 	}
-
 	/**
 	 * Execute list of test steps WITHOUT test case name
 	 */
 	public boolean run(List<TestStep> steps) {
 		return run("Default", steps, "Unnamed Test Case"); // Added "Default" as the first argument
 	}
+
+	/**
+	 * Switches the active driver and wait objects to the requested role.
+	 * Role can be 'web', 'user', or 'driver'.
+	 */
+	public void switchSession(String role) {
+		String targetRole = role.toLowerCase();
+
+		if (driverPool.containsKey(targetRole)) {
+			log("🔄 SWITCHING CONTEXT: Moving focus to [" + targetRole.toUpperCase() + "]");
+
+			// Update the active pointers
+			this.driver = driverPool.get(targetRole);
+			this.wait = waitPool.get(targetRole);
+			this.currentSessionRole = targetRole;
+
+			// Re-attach all action handlers to the new driver
+			refreshActionHandlers();
+
+			log("✅ Context switched successfully.");
+		} else {
+			log("❌ ERROR: Session '" + targetRole + "' has not been initialized!");
+			throw new RuntimeException("Session Role '" + targetRole + "' not found in Driver Pool. " +
+					"Ensure you initialized it using setupWebDriver() or setupMobileDriver().");
+		}
+	}
+
+	/**
+	 * Re-initializes all action classes with the current active driver.
+	 * This ensures 'clickActions', 'inputActions', etc., are talking to the right device.
+	 */
 	/**
 	 * Execute single test step - NEVER THROWS, JUST LOGS ERRORS
 	 */
@@ -283,14 +361,21 @@ public class TestExecutor {
 					xpath = value; // Use the value as the XPath directly
 					log("  → Using direct XPath from Value column: " + xpath);
 				}
-				else if (!action.startsWith("verifytoast") && !action.equals("verifysuccesstoast")
-						&& !action.equals("verifyerrortoast") && !action.equals("verifyalert")
-						&& !action.equals("verifyalertmessage") && !action.equals("verifynotification")
-						&& !action.equals("robotupload")) {
+				else if (!(driver instanceof io.appium.java_client.AppiumDriver) &&
+						!action.startsWith("verifytoast") &&
+						!action.equals("robotupload")) {
 
+					// Only auto-generate complex Web XPaths if we are NOT on Mobile
 					xpath = generateXPathFromValue(value, context);
-					log("  → Auto-generated XPath: " + xpath);
-				} else {
+					log("  → Auto-generated Web XPath: " + xpath);
+				}
+				else if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// For mobile, we often use the 'Value' directly as an Accessibility ID or ID
+					// We will handle the specific finding logic inside MobileActions/ClickActions
+					xpath = value;
+					log("  → Using Mobile Locator: " + xpath);
+				}
+				else {
 					log("  → Using auto-detection for toast/alert");
 				}
 			}
@@ -302,10 +387,14 @@ public class TestExecutor {
 		switch (action) {
 			case "openurl":
 			case "navigate":
-				log("  → URL: " + value);
-				driver.get(value);
-				waitActions.waitForPageLoad();
-				log("  ✓ Page loaded: " + driver.getCurrentUrl());
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					log("  → Mobile Context: App is already launched via Capabilities");
+				} else {
+					log("  → URL: " + value);
+					driver.get(value);
+					waitActions.waitForPageLoad();
+					log("  ✓ Page loaded: " + driver.getCurrentUrl());
+				}
 				break;
 			// ... (Removing migrated cases to clean up? Or keeping as fallback?
 			// For safety, I'll keep the switch case logic for now, but the Registry check
@@ -343,24 +432,52 @@ public class TestExecutor {
 				break;
 
 			case "click":
-				log("  → XPath: " + xpath);
-				// If we have a direct XPath, we should tell the action handler
-				// NOT to use the 'Value' for auto-generation.
-				if (xpath != null && !xpath.isEmpty()) {
-					clickActions.clickElementWithRetry(xpath, null);
+				log("  → XPath/Locator: " + xpath);
+
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// MOBILE LOGIC: Use the MobileActions tap method
+					// This uses the parseLocator logic (ID or XPath) we added to MobileActions
+					mobileActions.tap(xpath);
 				} else {
-					clickActions.clickElementWithRetry(xpath, value);
+					// WEB LOGIC: Preserve your original ClickActions logic
+					// If we have a direct XPath, we tell the action handler NOT to use 'Value'
+					if (xpath != null && !xpath.isEmpty()) {
+						clickActions.clickElementWithRetry(xpath, null);
+					} else {
+						clickActions.clickElementWithRetry(xpath, value);
+					}
 				}
+
 				log("  ✓ Clicked");
 				break;
 			case "select":
-				log("  → XPath: " + xpath);
-				clickActions.selectElementWithRetry(xpath, value);
+				log("  → XPath/Locator: " + xpath);
+				log("  → Value to Select: " + value);
+
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// MOBILE LOGIC
+					// 1. First, tap the element to open the selection list/picker
+					mobileActions.tap(xpath);
+					log("  → Opened mobile picker, searching for: " + value);
+
+					// 2. Locate the specific text option.
+					// We use a dynamic XPath to find the text on the screen.
+					String itemLocator = "//*[@text='" + value + "' or @content-desc='" + value + "']";
+					WebElement item = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(itemLocator)));
+					item.click();
+				} else {
+					// WEB LOGIC: Preserve your original ClickActions logic
+					clickActions.selectElementWithRetry(xpath, value);
+				}
+
 				log("  ✓ Selected");
 				break;
+
 			case "type":
 			case "enter":
-				log("  → XPath: " + xpath);
+				log("  → XPath/Locator: " + xpath);
+
+				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
 					log("  → Value: ********** (hidden)");
@@ -369,7 +486,21 @@ public class TestExecutor {
 							+ (value != null && value.length() > 60 ? value.substring(0, 60) + "..." : value));
 				}
 
-				inputActions.typeText(xpath, value);
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// MOBILE LOGIC
+					// We find the element using the locator (ID or XPath) and enter text
+					WebElement mobileElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
+							(xpath.startsWith("//") || xpath.startsWith("(//")) ? By.xpath(xpath) : By.id(xpath)
+					));
+					mobileElement.sendKeys(value);
+
+					// Essential for Mobile: Hide keyboard to keep the screen clear for the next step
+					mobileActions.hideKeyboard();
+				} else {
+					// WEB LOGIC: Preserve your original InputActions logic
+					inputActions.typeText(xpath, value);
+				}
+
 				log("  ✓ Text entered");
 				break;
 
@@ -429,22 +560,32 @@ public class TestExecutor {
 			case "selectfile":
 			case "attachfile":
 				log("  → File: " + value);
-				log("  → XPath: " + xpath);
-				fileActions.uploadFile(value, xpath);
-				log("  ✓ File uploaded");
+				log("  → XPath/Locator: " + xpath);
+
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// MOBILE GUARD
+					log("  ⚠ Mobile Upload: Ensure the app's permission dialogs are handled.");
+					// On mobile, we usually just use a standard click/tap on the 'Upload' button
+					// then manually automate the Gallery steps.
+					mobileActions.tap(xpath);
+				} else {
+					// WEB LOGIC: Original FileActions
+					fileActions.uploadFile(value, xpath);
+				}
+				log("  ✓ File upload action initiated");
 				break;
 
 			case "robotupload":
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					log("  ❌ Critical: 'robotupload' is not supported on Mobile Devices.");
+					throw new RuntimeException("RobotUpload is a Windows-only feature and cannot be used on Mobile.");
+				}
+
 				log("  → File: " + value);
-				// XPath is not strictly needed for Robot paste, but we might want to Click
-				// first?
-				// Usually Robot upload implies we already clicked the button.
-				// But for consistency, let's assume the previous step clicked the button.
-				// Or if XPath is provided, we click it first.
 				if (xpath != null && !xpath.isEmpty()) {
-					log("  → Clicking upload button first: " + xpath);
-					driver.findElement(By.xpath(xpath)).click(); // Simple click
-					waitActions.waitFor(1000); // Wait for dialog
+					log("  → Clicking upload button: " + xpath);
+					driver.findElement(By.xpath(xpath)).click();
+					waitActions.waitFor(1000);
 				}
 				fileActions.uploadFileWithRobot(value);
 				log("  ✓ File uploaded via Robot");
@@ -452,9 +593,16 @@ public class TestExecutor {
 
 			case "waitforupload":
 				log("  → Waiting for upload completion");
-				log("  → XPath: " + xpath);
-				fileActions.waitForUploadComplete(xpath);
-				log("  ✓ Upload complete");
+				log("  → XPath/Locator: " + xpath);
+
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					// Mobile usually waits for a specific element like 'Upload Successful'
+					waitActions.waitForElementVisible(xpath);
+				} else {
+					// WEB LOGIC: Original FileActions
+					fileActions.waitForUploadComplete(xpath);
+				}
+				log("  ✓ Upload wait complete");
 				break;
 
 
@@ -711,11 +859,21 @@ public class TestExecutor {
 
 			case "wait":
 				if (value != null && value.matches("\\d+")) {
+					// Static Wait (Same for Web and Mobile)
 					waitActions.waitFor(Long.parseLong(value));
 					log("  ✓ Waited " + value + "ms");
 				} else if (xpath != null && !xpath.isEmpty()) {
-					waitActions.waitForElementVisible(xpath);
-					log("  ✓ Waited for element visible (fallback)");
+					// Dynamic Wait for Element
+					log("  → Waiting for visibility: " + xpath);
+
+					if (driver instanceof io.appium.java_client.AppiumDriver) {
+						// MOBILE LOGIC: Uses the Visibility check which is reliable on both platforms
+						waitActions.waitForElementVisible(xpath);
+					} else {
+						// WEB LOGIC: Original fallback
+						waitActions.waitForElementVisible(xpath);
+					}
+					log("  ✓ Element is now visible");
 				} else {
 					log("  ⚠ Wait action with no value or xpath - default 1s wait");
 					waitActions.waitFor(1000);
@@ -752,12 +910,41 @@ public class TestExecutor {
 				}
 				break;
 
+			case "swipe_up":
+				log("  → Swiping Up");
+				mobileActions.swipe("up");
+				log("  ✓ Swiped Up");
+				break;
+
+			case "swipe_down":
+				log("  → Swiping Down");
+				mobileActions.swipe("down");
+				log("  ✓ Swiped Down");
+				break;
+
+			case "hide_keyboard":
+				log("  → Hiding Mobile Keyboard");
+				mobileActions.hideKeyboard();
+				log("  ✓ Keyboard hidden");
+				break;
+
+			case "tap":
+				log("  → Tapping Mobile Element: " + xpath);
+				mobileActions.tap(xpath);
+				log("  ✓ Tapped");
+				break;
+
 			default:
 				throw new RuntimeException("Unknown action: " + action);
 		}
 	}
 
 	private String generateXPathFromValue(String value, String context) {
+		// If we are on Mobile, do not use complex Web XPaths
+		if (driver instanceof io.appium.java_client.AppiumDriver) {
+			return value; // Return raw value to be used as ID/Accessibility ID
+		}
+
 		if (context != null && !context.isEmpty()) {
 			return String.format(
 					"//tr[contains(., '%2$s')]//*[contains(text(), '%1$s') or @title='%1$s' or @alt='%1$s' or @aria-label='%1$s' or contains(@class, '%1$s')]",
@@ -770,8 +957,15 @@ public class TestExecutor {
 	}
 
 	private void drawPolygon(String xpath, String value) {
+		// GUARD: Mobile apps usually don't support this type of coordinate-based Actions drawing
+		if (driver instanceof io.appium.java_client.AppiumDriver) {
+			log("  ⚠ Skipping drawPolygon: Not supported on Mobile devices.");
+			return;
+		}
+
 		WebElement map = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
 
+		// This line would crash on Mobile
 		((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", map);
 
 		int width = map.getSize().getWidth();
@@ -794,16 +988,14 @@ public class TestExecutor {
 		}
 
 		if (first != null) {
-			// MOVE back to start
 			actions.moveToElement(map, first[0], first[1]).perform();
 
-			// TRIPLE CLICK to force the 'drawend' event in OpenLayers
 			actions.click().pause(Duration.ofMillis(100))
 					.click().pause(Duration.ofMillis(100))
 					.click().pause(Duration.ofMillis(200))
 					.perform();
 
-			// TAB and ENTER: Forces the application to 'Notice' the data change
+			// Keys.TAB/ENTER are browser-specific
 			actions.sendKeys(org.openqa.selenium.Keys.TAB).pause(Duration.ofMillis(200))
 					.sendKeys(org.openqa.selenium.Keys.ENTER).perform();
 		}
@@ -825,12 +1017,30 @@ public class TestExecutor {
 	public void close() {
 		log("");
 		log("╔════════════════════════════════════════════════════════════════════════════════╗");
-		log("║                           CLOSING BROWSER                                      ║");
+		log("║                       CLOSING ALL ACTIVE SESSIONS                              ║");
 		log("╚════════════════════════════════════════════════════════════════════════════════╝");
-		if (driver != null) {
+
+		if (driverPool != null && !driverPool.isEmpty()) {
+			driverPool.forEach((role, sessionDriver) -> {
+				try {
+					if (sessionDriver != null) {
+						sessionDriver.quit();
+						log("✓ Session [" + role.toUpperCase() + "] closed successfully");
+					}
+				} catch (Exception e) {
+					log("⚠ Error closing session [" + role.toUpperCase() + "]: " + e.getMessage());
+				}
+			});
+			driverPool.clear();
+			waitPool.clear();
+			driver = null;
+			wait = null;
+		} else if (driver != null) {
+			// Fallback for single driver cases
 			driver.quit();
-			log("✓ Browser closed");
+			log("✓ Driver closed");
 		}
+
 		log("");
 	}
 
@@ -913,6 +1123,11 @@ public class TestExecutor {
 		log("");
 		log("→ Browser remains open for inspection");
 		log("→ Call executor.close() when done");
+		log("");
+		log("╚════════════════════════════════════════════════════════════════════════════════╝");
+		log("");
+		log("→ All sessions (Web/Mobile) remain active for inspection");
+		log("→ Call executor.close() to terminate all sessions");
 		log("");
 	}
 
@@ -1002,12 +1217,26 @@ public class TestExecutor {
 
 	private void updateBrowserOverlay(String sheet, String test, int stepNum, TestStep step) {
 		try {
-			if (driver == null) return;
-			org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+			// --- UNIVERSAL DASHBOARD LOGIC ---
+			// We look for the "web" session in our pool to act as the display monitor
+			WebDriver webDisplay = driverPool.get("web");
+
+			// If the web browser isn't open, we can't show the overlay, so we exit
+			if (webDisplay == null) return;
+
+			// We use the webDisplay specifically for the JS injection
+			org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) webDisplay;
 
 			String action = step.getAction().toUpperCase();
-			String detail = (step.getValue() != null && !step.getValue().isEmpty()) ? step.getValue() :
+
+			// Detect current platform to add a visual indicator to the overlay
+			String platformIcon = (driver instanceof io.appium.java_client.AppiumDriver) ? "📱 MOBILE: " : "💻 WEB: ";
+
+			String rawDetail = (step.getValue() != null && !step.getValue().isEmpty()) ? step.getValue() :
 					(step.getXpath() != null ? step.getXpath() : "");
+
+			// Combine the platform icon with the detail
+			String detail = platformIcon + rawDetail;
 
 			String script =
 					"var overlay = document.getElementById('automation-overlay');" +
@@ -1020,7 +1249,7 @@ public class TestExecutor {
 							"                           padding:0 20px; z-index:999999; " +
 							"                           font-family:Segoe UI, Tahoma, sans-serif; " +
 							"                           border-bottom:3px solid #00d4ff; " +
-							"                           display:grid; grid-template-columns: auto auto auto 1fr; " + // 1fr on the end lets the steps take the rest of the space
+							"                           display:grid; grid-template-columns: auto auto auto 1fr; " +
 							"                           align-items:center; gap:25px; box-shadow:0 4px 12px rgba(0,0,0,0.5); " +
 							"                           pointer-events:none; opacity:1.0;';" +
 							"  " +
@@ -1035,7 +1264,7 @@ public class TestExecutor {
 							"  document.body.appendChild(overlay);" +
 							"}" +
 							"" +
-							"/* Update text containers - NO MORE TRUNCATION */" +
+							"/* Update text containers */" +
 							"document.getElementById('overlay-left').innerHTML = \"<span style='color:#666'>📄</span> \" + arguments[0] + \" <span style='color:#444;margin:0 5px'>|</span> <span style='color:#666'>🧪</span> \" + arguments[1];" +
 							"document.getElementById('overlay-right').innerHTML = \"<b style='color:#00d4ff'>🔢 STEP \" + arguments[2] + \":</b> <span style='color:#fff; background:#333; padding:3px 8px; border-radius:4px; margin:0 5px'>\" + arguments[3] + \"</span> <span style='color:#bbb; font-size:11px'>\" + arguments[4] + \"</span>\";" +
 							"" +
@@ -1055,39 +1284,49 @@ public class TestExecutor {
 
 			js.executeScript(script, this.excelName, test, stepNum, action, detail);
 		} catch (Exception e) {
-			// Fail silently
+			// Fail silently - if the web window is navigated away or closed, we don't want to stop the mobile test
 		}
 	}
 
 	public WebDriverWait getWait() {
-		return wait;
+		return this.wait;
 	}
 
+	/**
+	 * Updates the active wait object and ensures the pool is updated.
+	 */
 	public void setWait(WebDriverWait wait) {
 		this.wait = wait;
+		if (currentSessionRole != null) {
+			waitPool.put(currentSessionRole, wait);
+		}
 	}
 
+	/**
+	 * Updates the active driver and ensures the pool is updated.
+	 * Also triggers a refresh of action handlers (click, input, etc.)
+	 */
 	public void setDriver(WebDriver driver) {
 		this.driver = driver;
+		if (currentSessionRole != null) {
+			driverPool.put(currentSessionRole, driver);
+			// Crucial: Update handlers so they use the new driver immediately
+			refreshActionHandlers();
+		}
 	}
 
 	private String padRight(String s, int n) {
-		return String.format("%-" + n + "s", s);
+		// Handle null strings to prevent formatting errors
+		String val = (s == null) ? "" : s;
+		return String.format("%-" + n + "s", val);
 	}
 
 	public void setDetailedLogging(boolean enabled) {
 		this.detailedLogging = enabled;
 	}
 
-	public int getTotalStepsExecuted() {
-		return totalStepsExecuted;
-	}
-
-	public int getPassedSteps() {
-		return passedSteps;
-	}
-
-	public int getFailedSteps() {
-		return failedSteps;
-	}
+	// Getters for reporting remain the same
+	public int getTotalStepsExecuted() { return totalStepsExecuted; }
+	public int getPassedSteps() { return passedSteps; }
+	public int getFailedSteps() { return failedSteps; }
 }
