@@ -8,6 +8,12 @@ import com.eit.automation.utils.ReportGenerator;
 import com.eit.automation.utils.VideoRecorder;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.ios.IOSDriver;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import java.net.URL;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +21,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.time.Duration;
 
 public class Main {
     public static Properties config;
@@ -23,15 +34,18 @@ public class Main {
 
     // Track sheets already completed to avoid infinite loops and double runs
     private static Set<String> executedSheets = new HashSet<>();
-    private static boolean isBrowserStarted = false;
+
+    // --- NEW: UNIVERSAL SESSION TRACKING ---
+// Tracks which sessions from the DriverPool have been initialized
+    public static Set<String> activeSessions = new HashSet<>();
+    // Specifically tracks if the Web Admin login is done
+    private static boolean isWebLoggedIn = false;
 
     static {
         try {
             videoRecorder = new VideoRecorder();
         } catch (Exception e) {
             System.err.println("❌ Critical: Failed to initialize Video Recorder: " + e.getMessage());
-            // You can choose to leave it null; the try-catch in your loop
-            // will then handle the null pointer safely.
         }
     }
 
@@ -39,13 +53,14 @@ public class Main {
         ReportGenerator reportGenerator = new ReportGenerator();
 
         try {
-            System.out.println("=== 🚀 EIT Test Automation Started ===\n");
+            System.out.println("=== 🚀 EIT Universal Test Automation Started (Web + Mobile) ===\n");
 
             // --- IMPROVED DYNAMIC CONFIG LOADING ---
             config = new Properties();
             String env = System.getProperty("env");
 
-            String configFileName = env + ".properties";
+            // System property check for environment-specific configs
+            String configFileName = (env != null && !env.isEmpty()) ? env + ".properties" : "config.properties";
             File configFile = new File(configFileName);
 
             if (!configFile.exists()) {
@@ -59,7 +74,7 @@ public class Main {
                 config.load(configFis);
             }
 
-            // Validate that we actually loaded data (prevents NullPointerException later)
+            // Validate that we actually loaded data
             String testFilePath = config.getProperty("excel.name");
             if (testFilePath == null || testFilePath.isEmpty()) {
                 throw new RuntimeException("❌ Error: 'excel.name' is missing or empty in " + configFileName);
@@ -75,10 +90,12 @@ public class Main {
                 throw new RuntimeException("Test file not found at: " + testFile.getAbsolutePath());
             }
 
+            // Initialize the Universal TestExecutor (It will manage Web, User App, and Driver App)
+            executor = new TestExecutor(reportGenerator, config);
+
             // Detect file type and read accordingly
             if (testFilePath.toLowerCase().endsWith(".csv")) {
                 System.out.println("📄 Detected CSV file format");
-                executor = new TestExecutor(reportGenerator,config);
                 readCSVTestCases(testFilePath, executor, reportGenerator);
             } else if (testFilePath.toLowerCase().endsWith(".xlsx") || testFilePath.toLowerCase().endsWith(".xls")) {
                 System.out.println("📊 Detected Excel file format");
@@ -95,13 +112,17 @@ public class Main {
             reportGenerator.endTestExecution();
         } finally {
             if (executor != null) {
-                System.out.println("🛑 Closing browser...");
+                // Updated log message because we are closing Browsers AND Emulators
+                System.out.println("🛑 Terminating all active automation sessions...");
                 executor.close();
             }
         }
     }
     /**
      * Read test cases from Excel file - UPDATED TO HANDLE MULTIPLE SHEETS CORRECTLY
+     */
+    /**
+     * Read test cases from Excel file
      */
     private static void readExcelTestCases(String excelPath, ReportGenerator reportGenerator) throws Exception {
         String sheetNameConfig = config.getProperty("sheets.name");
@@ -110,8 +131,9 @@ public class Main {
         try (FileInputStream fis = new FileInputStream(excelPath);
              Workbook workbook = new XSSFWorkbook(fis)) {
 
+            // Executor is already initialized in main(), but we ensure safety here
             if (executor == null) {
-                executor = new TestExecutor(reportGenerator,config);
+                executor = new TestExecutor(reportGenerator, config);
             }
 
             for (String rawSheetName : sheetNames) {
@@ -122,7 +144,6 @@ public class Main {
 
     /**
      * Logic to handle the Precondition column dependency recursively.
-     * Handles long descriptive text by searching for the "RunSheet:" keyword.
      */
     private static void runSheetWithPrecondition(String sheetName, Workbook workbook, ReportGenerator reportGenerator) throws Exception {
         if (executedSheets.contains(sheetName)) return;
@@ -133,7 +154,6 @@ public class Main {
             return;
         }
 
-        // --- UPDATED MULTI-PRECONDITION SEARCH ---
         Row firstRow = sheet.getRow(1);
         if (firstRow != null) {
             Cell preconditionCell = firstRow.getCell(5);
@@ -141,18 +161,13 @@ public class Main {
                 String fullText = preconditionCell.getStringCellValue();
 
                 if (fullText.contains("RunSheet:")) {
-                    // 1. Split by "RunSheet:" in case there are multiple mentions
                     String[] parts = fullText.split("RunSheet:");
-
-                    // Skip index 0 as it is the text before the first "RunSheet:"
                     for (int j = 1; j < parts.length; j++) {
-                        // 2. Clean the part to get the sheet names (handles comma-separated)
-                        String rawNames = parts[j].split("\\n|\\r")[0].trim(); // Get the line
-                        String[] dependencies = rawNames.split(","); // Split by comma
+                        String rawNames = parts[j].split("\\n|\\r")[0].trim();
+                        String[] dependencies = rawNames.split(",");
 
                         for (String dep : dependencies) {
                             String dependencySheet = dep.trim().split("\\s+")[0].replace(".", "");
-
                             if (!dependencySheet.isEmpty() && !executedSheets.contains(dependencySheet)) {
                                 System.out.println("🔗 Multi-Dependency Found: [" + dependencySheet + "]");
                                 runSheetWithPrecondition(dependencySheet, workbook, reportGenerator);
@@ -166,8 +181,10 @@ public class Main {
         processSheetData(sheet, sheetName, reportGenerator);
         executedSheets.add(sheetName);
     }
+
     /**
-     * The actual loop that runs the test cases in the sheet
+     * The actual loop that runs the test cases in the sheet.
+     * UPDATED: Now supports Smart Session Management for Web and Mobile.
      */
     private static void processSheetData(Sheet sheet, String sheetName, ReportGenerator reportGenerator) {
         System.out.println("\n📖 Processing Sheet: [" + sheetName + "]");
@@ -195,18 +212,22 @@ public class Main {
             String videoFileName = testCaseName.replaceAll("[^a-zA-Z0-9]", "_") + ".mp4";
 
             try {
+                // Video recording starts for the whole desktop (Captures Browser + Emulators)
                 System.out.println("🎥 Starting Video Recording: " + videoFileName);
                 videoRecorder.startRecording(reportGenerator.getReportDir(), videoFileName);
 
-                if (!isBrowserStarted) {
-                    executor.getDriver().get(config.getProperty("base.url"));
-                    isBrowserStarted = true;
-                } else {
+                // --- SMART SESSION INITIALIZATION ---
+                // We check if the test case is intended for Web or Mobile.
+                // If it's a standard web test and not logged in yet, we perform login.
+                if (!isWebLoggedIn && !stepBlock.toLowerCase().contains("switch_to")) {
+                    performInitialLogin(executor);
+                    isWebLoggedIn = true;
+                } else if (isWebLoggedIn) {
+                    // If already logged in, just refresh the dashboard to clean the state
                     String dashboardUrl = config.getProperty("dashboard.url");
-                    if (dashboardUrl != null && !dashboardUrl.isEmpty()) {
-                        executor.getDriver().get(dashboardUrl);
+                    if (dashboardUrl != null && !dashboardUrl.isEmpty() && activeSessions.contains("web")) {
+                        executor.getDriverPool().get("web").get(dashboardUrl);
                     }
-                    try { Thread.sleep(1500); } catch (Exception ignored) {}
                 }
 
                 executeTestCase(sheetName, testCaseName, stepBlock, executor, reportGenerator);
@@ -221,9 +242,6 @@ public class Main {
             }
         }
     }
-
-
-
     /**
      * Read test cases from CSV file
      */
@@ -239,8 +257,9 @@ public class Main {
 
             // Check for filter
             String filterName = config.getProperty("filter.name");
-            boolean match = false;
-            if (filterName != null && !filterName.isEmpty()) {
+            boolean match = (filterName == null || filterName.isEmpty());
+
+            if (!match) {
                 String[] filters = filterName.split(",");
                 for (String f : filters) {
                     if (testCaseName.toLowerCase().contains(f.trim().toLowerCase())) {
@@ -248,12 +267,34 @@ public class Main {
                         break;
                     }
                 }
-                if (!match) {
-                    continue; // Skip if no match found
-                }
             }
 
-            executeTestCase("CSV_Data",testCaseName, stepBlock, executor, reportGenerator);
+            if (!match) continue;
+
+            // --- NEW: UNIVERSAL INTEGRATION FOR CSV ---
+            String videoFileName = testCaseName.replaceAll("[^a-zA-Z0-9]", "_") + "_CSV.mp4";
+
+            try {
+                // Start recording the desktop (Captures Browser + Emulators)
+                System.out.println("🎥 [CSV] Starting Video Recording: " + videoFileName);
+                videoRecorder.startRecording(reportGenerator.getReportDir(), videoFileName);
+
+                // Smart Session: Login only if this isn't a mobile-start test
+                if (!isWebLoggedIn && !stepBlock.toLowerCase().contains("switch_to")) {
+                    performInitialLogin(executor);
+                    isWebLoggedIn = true;
+                }
+
+                executeTestCase("CSV_Data", testCaseName, stepBlock, executor, reportGenerator);
+
+            } catch (Exception e) {
+                System.err.println("❌ CSV Execution Error in " + testCaseName + ": " + e.getMessage());
+            } finally {
+                try {
+                    videoRecorder.stopRecording();
+                    reportGenerator.addVideoToTestCase(videoFileName);
+                } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -274,34 +315,72 @@ public class Main {
             return;
         }
 
-        // Execute test
+        // --- NEW: UNIVERSAL SESSION AUTO-STARTER ---
+        // Look at the first few steps. If we see a 'switch_to' for a session
+        // that isn't active yet, we initialize it right now.
+        for (TestStep step : steps) {
+            String action = step.getAction().toLowerCase();
+            String role = (step.getValue() != null) ? step.getValue().toLowerCase() : "";
+
+            if ((action.equals("switch_to") || action.equals("switchsession")) && !role.isEmpty()) {
+                if (!activeSessions.contains(role)) {
+                    System.out.println("🚀 Auto-Initializing required session: [" + role.toUpperCase() + "]");
+
+                    if (role.equals("web")) {
+                        executor.setupWebDriver();
+                    } else {
+                        // This calls your Mobile setup for 'user' or 'driver'
+                        executor.setupMobileDriver(role);
+                    }
+                    activeSessions.add(role);
+                }
+            }
+        }
+
+        // Execute the steps using the updated TestExecutor
+        // It will now handle the switching seamlessly.
         executor.run(sheetName, steps, testCaseName);
     }
-
     /**
      * Perform initial login before test execution
      */
     private static void performInitialLogin(TestExecutor executor) {
         System.out.println("\n╔════════════════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║                        PERFORMING INITIAL LOGIN                                ║");
+        System.out.println("║                        PERFORMING INITIAL LOGIN (WEB)                          ║");
         System.out.println("╚════════════════════════════════════════════════════════════════════════════════╝");
 
         try {
+            // --- STEP 1: ENSURE WEB SESSION IS INITIALIZED ---
+            if (!activeSessions.contains("web")) {
+                System.out.println("🌐 Initializing Web Driver for Admin Login...");
+                executor.setupWebDriver(); // This starts Chrome and adds it to the pool
+                activeSessions.add("web");
+            }
+
+            // --- STEP 2: SWITCH TO WEB CONTEXT ---
+            // We force the executor to focus on 'web' to ensure login happens in the browser
+            executor.switchSession("web");
+
             String url = config.getProperty("base.url");
             String username = config.getProperty("admin.email");
             String password = config.getProperty("admin.password");
 
-            System.out.println("→ Navigating to login page: " + url);
-            System.out.println("→ Logging in as: " + username);
+            System.out.println("→ Navigating to Admin Portal: " + url);
+            System.out.println("→ Credentials: " + username);
 
             if (url != null && !url.isEmpty()) {
+                // Using executor.getDriver() now safely returns the Chrome instance
                 executor.getDriver().get(url);
+
                 LoginPage loginPage = new LoginPage(executor.getDriver(), executor.getWait());
                 loginPage.login(username, password);
-                System.out.println("✓ Login credentials submitted");
+
+                System.out.println("✓ Web Admin login successful.");
             }
         } catch (Exception e) {
             System.err.println("❌ Initial login failed: " + e.getMessage());
+            // If login fails, we shouldn't proceed with other web-dependent tests
+            isWebLoggedIn = false;
             e.printStackTrace();
         }
     }

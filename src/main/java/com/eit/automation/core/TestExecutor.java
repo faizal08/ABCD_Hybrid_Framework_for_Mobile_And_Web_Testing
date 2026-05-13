@@ -1288,6 +1288,63 @@ public class TestExecutor {
 		}
 	}
 
+	/**
+	 * Initializes a standard Web (Chrome) session and adds it to the pool.
+	 */
+	public void setupWebDriver() {
+		log("🌐 Initializing Chrome Browser...");
+		// Use your existing browser setup logic here
+		// Example:
+		// WebDriver webDriver = new ChromeDriver();
+		// setDriver(webDriver);
+		// this.driverPool.put("web", webDriver);
+
+		// Note: Ensure your existing setup code is moved into this method
+	}
+
+	/**
+	 * Initializes a Mobile (Android/Appium) session for a specific role.
+	 * @param role 'user' or 'driver'
+	 */
+	public void setupMobileDriver(String role) {
+		log("📱 Initializing Mobile Emulator for Role: [" + role.toUpperCase() + "]");
+
+		try {
+			DesiredCapabilities caps = new DesiredCapabilities();
+			caps.setCapability("platformName", "Android");
+			caps.setCapability("automationName", "UiAutomator2");
+
+			// Pull details dynamically from the config we passed in the constructor
+			caps.setCapability("udid", config.getProperty(role + ".device.id"));
+			caps.setCapability("app", config.getProperty(role + ".apk.path"));
+			caps.setCapability("appPackage", config.getProperty(role + ".app.package"));
+			caps.setCapability("appActivity", config.getProperty(role + ".app.activity"));
+			caps.setCapability("noReset", true);
+
+			URL url = new URL(config.getProperty("appium.url"));
+			WebDriver mobileDriver = new io.appium.java_client.android.AndroidDriver(url, caps);
+
+			// Add to our Universal Pool
+			driverPool.put(role, mobileDriver);
+
+			// If this is the first driver being created, set it as the active one
+			if (this.driver == null) {
+				setDriver(mobileDriver);
+				this.currentSessionRole = role;
+			}
+
+			log("✅ Mobile session started for " + role);
+
+		} catch (Exception e) {
+			log("❌ Failed to start Mobile session for " + role + ": " + e.getMessage());
+			throw new RuntimeException(e);
+		}
+	}
+
+	public Map<String, WebDriver> getDriverPool() {
+		return this.driverPool;
+	}
+
 	public WebDriverWait getWait() {
 		return this.wait;
 	}
