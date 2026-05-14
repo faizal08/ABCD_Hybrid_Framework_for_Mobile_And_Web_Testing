@@ -148,14 +148,21 @@ public class TestExecutor {
 
 	public void setupWebDriver() {
 		log("🌐 Initializing Chrome Browser...");
-		initializeWebDriver("web");
-		// Use your existing browser setup logic here
-		// Example:
-		// WebDriver webDriver = new ChromeDriver();
-		// setDriver(webDriver);
-		// this.driverPool.put("web", webDriver);
 
-		// Note: Ensure your existing setup code is moved into this method
+		// 1. Initialize the driver
+		initializeWebDriver("web");
+
+		if (this.driver != null) {
+			log("📐 Restoring browser to the far left (X=0)...");
+
+			// Sets width to half-screen (960) and height to full (1080)
+			this.driver.manage().window().setSize(new org.openqa.selenium.Dimension(960, 1080));
+
+			// Positions the window at the absolute top-left corner
+			this.driver.manage().window().setPosition(new org.openqa.selenium.Point(0, 0));
+		}
+
+		log("✓ Web Session [web] is active and locked to the left");
 	}
 
 	/**
