@@ -1,10 +1,46 @@
-# 📘 ABCD Automation Framework: Full Keywords Dictionary
+# 📱💻 ABCD Hybrid Framework: Full Keywords Dictionary
 
 This document is the official reference for writing automated test cases. The `StepParser` uses natural language processing (Regex) to match your Excel steps to automation actions.
 
 ---
 
-## 🛠️ 1. Navigation & System
+## 🚀 1. Hybrid Orchestration (Multi-Session)
+These keywords are the "brain" of the hybrid framework. They allow you to switch control between your browser and multiple mobile devices in a single test script.
+
+| Action | Phrase Examples | Description |
+| :--- | :--- | :--- |
+| **`switch_to`** | switch_to, focus, load | Moves the execution focus to a different platform. Values: **web**, **user**, **driver**. |
+
+**Excel Example:**
+
+| Test Step Description | Action | Value | Target (XPath/ID) |
+| :--- | :--- | :--- | :--- |
+| Switch to User App | **switch_to** | **user** | - |
+| Switch to Driver App | **switch_to** | **driver** | - |
+| Switch back to Admin | **switch_to** | **web** | - |
+
+---
+
+## 📱 2. Mobile Specific Actions
+Handled by the `MobileActions.java` class. These keywords are optimized for Appium.
+
+| Action | Phrase Examples | Description |
+| :--- | :--- | :--- |
+| **`tap`** | tap, mobile click | Performs a touch interaction. Handles Accessibility IDs or XPaths. |
+| **`swipe`** | swipe, scroll | Swipes the screen. Values: **up**, **down**. |
+| **`hide_keyboard`** | hide keyboard, close keypad | Dismisses the mobile keyboard (essential for forms). |
+
+**Excel Example:**
+
+| Test Step Description | Action | Value | Target (XPath/ID) |
+| :--- | :--- | :--- | :--- |
+| Click English Icon | **tap** | - | //android.widget.Button[@content-desc="English"] |
+| Scroll Down List | **swipe** | **down** | - |
+| Hide Mobile Keypad | **hide_keyboard** | - | - |
+
+---
+
+## 🛠️ 3. Navigation & System
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -22,7 +58,7 @@ This document is the official reference for writing automated test cases. The `S
 
 ---
 
-## ⌨️ 2. Interactions & Input
+## ⌨️ 4. Interactions & Input
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -44,7 +80,7 @@ This document is the official reference for writing automated test cases. The `S
 
 ---
 
-## 📁 3. File Uploads & System Tools
+## 📁 5. File Uploads & System Tools
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -61,7 +97,7 @@ This document is the official reference for writing automated test cases. The `S
 
 ---
 
-## 🔍 4. Verification & Assertions
+## 🔍 6. Verification & Assertions
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -81,7 +117,7 @@ This document is the official reference for writing automated test cases. The `S
 
 ---
 
-## 🛡️ 5. Advanced Presence Assertions (Negative Testing)
+## 🛡️ 7. Advanced Presence Assertions (Negative Testing)
 
 These keywords allow you to perform strict validation on whether an element should or should not exist in the DOM. This is particularly useful for verifying **Role-Based Access Control (RBAC)** where certain menus must be hidden from specific users.
 
@@ -102,7 +138,7 @@ These keywords allow you to perform strict validation on whether an element shou
 ---
 
 
-## ⏳ 6. Explicit Waits & Toasts
+## ⏳ 8. Explicit Waits & Toasts
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -121,7 +157,7 @@ These keywords allow you to perform strict validation on whether an element shou
 
 ---
 
-## 🖱️ 7. Scrolling, Frames & Maps
+## 🖱️ 9. Scrolling, Frames & Maps
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
@@ -140,7 +176,7 @@ These keywords allow you to perform strict validation on whether an element shou
 
 ---
 
-## 🎲 8. Dynamic Placeholders (Value Column)
+## 🎲 10. Dynamic Placeholders (Value Column)
 
 | Placeholder | Result Example | Best For |
 | :--- | :--- | :--- |
@@ -159,7 +195,7 @@ These keywords allow you to perform strict validation on whether an element shou
 
 ---
 
-## 💾 9. Save & Reuse Logic
+## 💾 11. Save & Reuse Logic
 
 Capture a value in one step to use it in a later step.
 
@@ -187,7 +223,7 @@ Wrap the variable name in curly braces `{}`.
 
 ---
 
-## 📊 10. Reporting & Debugging
+## 📊 12. Reporting & Debugging
 The framework is designed to make debugging easy:
 1.  **Red Box Highlighting:** If a step fails, the report screenshot will show a **Red Border** around the specific element that failed.
 2.  **Video Logs:** Check `test-outputs/videos` for a full recording of the execution.
@@ -195,7 +231,7 @@ The framework is designed to make debugging easy:
 
 ---
 
-## 🔗 11. Cross-Sheet Dependencies (Preconditions)
+## 🔗 13. Cross-Sheet Dependencies (Preconditions)
 
 The framework supports **Recursive Dependencies**. If one test suite (Sheet) requires data or a state created in another sheet, you can link them directly within the Excel file.
 
@@ -218,7 +254,7 @@ In the **Precondition** column (Column 5) of the **very first test case row** (R
 
 ---
 
-## 🗄️ 12. Database Cleanup & Maintenance
+## 🗄️ 14. Database Cleanup & Maintenance
 
 This feature allows the framework to interact directly with the PostgreSQL database to remove test data after a suite finishes. This ensures your environment remains clean and prevents "Duplicate Entry" errors during repeated test runs.
 
@@ -266,7 +302,7 @@ Below are frequently used cleanup templates for various modules:
 
 ---
 
-## 🌍 13. Multi-Environment Configuration (CLI Support)
+## 🌍 15. Multi-Environment Configuration (CLI Support)
 
 The framework now supports **Dynamic Configuration Loading**. Instead of manually editing the `config.properties` file to switch between projects (e.g., ERP vs. WE1), you can maintain separate configuration files and trigger them via the command line.
 
@@ -279,23 +315,41 @@ The framework looks for a system property named `env`.
 ### **Setup Guide**
 Create separate `.properties` files in your root folder. Ensure each file has its own `base.url`, `excel.name`, and `sheets.name`.
 
-#### **Example: `erp.properties`**
+#### **Sample Example: `hybrid.properties`**
 ```properties
-base.url=[https://erp.qa.ethicalintelligent.com/](https://erp.qa.ethicalintelligent.com/)
-excel.name=erp_regression.xlsx
-sheets.name=erpLogin
-admin.email=administrator
-admin.password=eit@123
+
+admin.email=super_admin@gmail.com
+admin.password=R1mep@321
+base.url=https://dev.we1.co/#/login
+dashboard.url=https://dev.we1.co/#/page-module/dashboard_dynamic
+browser=chrome
+headless=false
+appium.url=http://127.0.0.1:4723
+user.device.id=emulator-5554
+driver.device.id=emulator-5556
+user.apk.path=C:/EIT_PROJECTS/WE1_MOBILE_APPS/We1_User.apk
+driver.apk.path=C:/EIT_PROJECTS/WE1_MOBILE_APPS/We1_Driver.apk
+user.app.package=com.we1.customer
+user.app.activity=com.we1.customer.MainActivity
+driver.app.package=com.we1.driver
+driver.app.activity=com.we1.driver.MainActivity
+db.url=jdbc:postgresql://194.233.75.197:5432/we1
+db.user=postgres
+db.password=we12025
+filter.name=TC_CA_
+excel.name=we1_hybrid_regression.xlsx
+sheets.name=HybridTestFlow
+
 ```
 ### **Execution Commands (CLI)**
 To run your tests against a specific environment, open your terminal in the project root and use the following Maven commands:
 
-| Target Site | CLI Command |
-| :--- | :--- |
-| **Default Fallback** | `mvn exec:java -Denv=config` |
-| **ERP Regression** | `mvn exec:java -Denv=erp` |
-| **WE1 Super Admin** | `mvn exec:java -Denv=we1_superadmin` |
-
+| Target Site          | CLI Command                           |
+|:---------------------|:--------------------------------------|
+| **Default Fallback** | `mvn exec:java -Denv=config`          |
+| **ERP Regression**   | `mvn exec:java -Denv=erp`             |
+| **WE1 Super Admin**  | `mvn exec:java -Denv=we1_superadmin`  |
+| **WE1 Hybrid**       | `mvn exec:java -Denv=we1_hybrid`      |
 ---
 
 > **💡 Note:** The `-Denv` parameter tells the framework exactly which `.properties` file to load before starting the browser. Make sure your environment file (e.g., `erp.properties`) is located in the root folder of your project.
