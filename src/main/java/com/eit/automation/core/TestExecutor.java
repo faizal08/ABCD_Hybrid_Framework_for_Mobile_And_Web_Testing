@@ -1107,16 +1107,14 @@ public class TestExecutor {
 				}
 				break;
 
-			case "swipe_up":
-				log("  → Swiping Up");
-				mobileActions.swipe("up");
-				log("  ✓ Swiped Up");
-				break;
+			case "swipe":
+			case "scroll_mobile":
+				// Read the parameter value from your spreadsheet row (e.g., "up" or "down")
+				String swipeDirection = (value != null && !value.isEmpty()) ? value.trim().toLowerCase() : "up";
 
-			case "swipe_down":
-				log("  → Swiping Down");
-				mobileActions.swipe("down");
-				log("  ✓ Swiped Down");
+				log("  → Initiating Mobile Swipe Gesture Direction: " + swipeDirection);
+				mobileActions.swipe(swipeDirection);
+				log("  ✓ Swipe sequence completed successfully");
 				break;
 
 			case "hide_keyboard":
