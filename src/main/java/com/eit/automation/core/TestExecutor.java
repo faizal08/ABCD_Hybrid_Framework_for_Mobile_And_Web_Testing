@@ -185,7 +185,15 @@ public class TestExecutor {
 			options.setApp(config.getProperty(role + ".apk.path"));
 			options.setAppPackage(config.getProperty(role + ".app.package"));
 			options.setAppActivity(config.getProperty(role + ".app.activity"));
-			options.setNoReset(true);
+
+			// 🚀 SPEED OPTIMIZATION 1: Changed from true to false to clear out stuck background clutter
+			options.setNoReset(false);
+
+			// 🚀 SPEED OPTIMIZATION 2: Inject capabilities directly into your modern options object
+			options.setCapability("fullReset", false);
+			options.setCapability("shouldTerminateApp", true);
+			options.setCapability("skipDeviceInitialization", true);
+			options.setCapability("skipServerInstallation", true);
 
 			URL url = new URL(config.getProperty("appium.url"));
 
