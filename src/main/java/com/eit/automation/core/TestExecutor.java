@@ -592,7 +592,7 @@ public class TestExecutor {
 				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
-					log("  → Value: ********** (hidden)");
+					log("  → Value: **** (hidden)");
 				} else {
 					log("  → Value: "
 							+ (value != null && value.length() > 60 ? value.substring(0, 60) + "..." : value));
@@ -610,47 +610,41 @@ public class TestExecutor {
 
 							String lowerXpath = xpath != null ? xpath.toLowerCase() : "";
 
-							// 1. Strict Page Check: Verify we are on the OTP verification layer
-							boolean isStrictOtpPage = false;
-							try {
-								driver.findElement(By.xpath("//android.view.View[contains(@content-desc,'Verify Your Phone')]"));
-								isStrictOtpPage = true;
-							} catch (Exception e) {
-								isStrictOtpPage = false;
-							}
+							// ⚡ Clean string evaluation (Removes lookup DOM bottlenecks)
+							boolean isOtpFieldXpath = lowerXpath.contains("verify") || lowerXpath.contains("otp");
+							boolean isInputTarget = lowerXpath.contains("edittext") || lowerXpath.contains("descendant") || lowerXpath.contains("widget.view");
 
-							boolean isTargetOtpInput = lowerXpath.contains("edittext") || lowerXpath.contains("descendant");
+							// 🌍 Target strictly 4 or 6-digit numeric sequences (Protects phone numbers & text strings)
+							boolean isNumericOtpValue = value != null && value.matches("\\d+") && (value.length() == 4 || value.length() == 6);
 
-							if (isStrictOtpPage && isTargetOtpInput && value.matches("\\d+")) {
-								log("  ⚠️ OTP Page Context Confirmed. Opening keyboard layer safely...");
+							if ((isOtpFieldXpath || isInputTarget) && isNumericOtpValue) {
+								log("  ⚠️ Universal Numeric OTP Sequence Detected. Executing hardware stream focus tap...");
 								io.appium.java_client.android.AndroidDriver androidDriver = (io.appium.java_client.android.AndroidDriver) driver;
 
 								org.openqa.selenium.Point location = mobileElement.getLocation();
 								org.openqa.selenium.Dimension size = mobileElement.getSize();
 
-								// Focus tap exactly ONCE on the first dash mark component to slide up keyboard safely
-								int targetFirstDashX = location.getX() + (int)(size.getWidth() * 0.12);
-								int targetFirstDashY = location.getY() + (size.getHeight() / 2);
+								int targetX = location.getX() + (int)(size.getWidth() * 0.12);
+								int targetY = location.getY() + (size.getHeight() / 2);
 
-								log("    → Opening keyboard via First Dash coordinate: (" + targetFirstDashX + ", " + targetFirstDashY + ")");
+								log("    → Waking up focus bounds dynamically at: (" + targetX + ", " + targetY + ")");
 
 								org.openqa.selenium.interactions.PointerInput initialFinger =
 										new org.openqa.selenium.interactions.PointerInput(org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "initialFinger");
 								org.openqa.selenium.interactions.Sequence baseTap = new org.openqa.selenium.interactions.Sequence(initialFinger, 1);
 
-								baseTap.addAction(initialFinger.createPointerMove(java.time.Duration.ZERO, org.openqa.selenium.interactions.PointerInput.Origin.viewport(), targetFirstDashX, targetFirstDashY));
+								baseTap.addAction(initialFinger.createPointerMove(java.time.Duration.ZERO, org.openqa.selenium.interactions.PointerInput.Origin.viewport(), targetX, targetY));
 								baseTap.addAction(initialFinger.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
 								baseTap.addAction(initialFinger.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
 								androidDriver.perform(java.util.Collections.singletonList(baseTap));
 
 								log("  ⚠️ Waiting for input engine surface to stabilize...");
-								try { Thread.sleep(2000); } catch (InterruptedException e) {}
+								try { Thread.sleep(1200); } catch (InterruptedException e) {}
 
 								log("  🚀 Injecting native hardware KeyEvents directly into focus stream...");
 								for (char ch : value.toCharArray()) {
 									io.appium.java_client.android.nativekey.AndroidKey targetKey;
 
-									// CORRECT MAPPING: Link char directly to explicit Android Key Enums
 									switch (ch) {
 										case '0': targetKey = io.appium.java_client.android.nativekey.AndroidKey.DIGIT_0; break;
 										case '1': targetKey = io.appium.java_client.android.nativekey.AndroidKey.DIGIT_1; break;
@@ -668,20 +662,37 @@ public class TestExecutor {
 									log("    → Sending Native Key Stream Event: " + targetKey.name());
 									androidDriver.pressKey(new io.appium.java_client.android.nativekey.KeyEvent(targetKey));
 
-									// Give Flutter brief delay to advance focus highlight smoothly
-									try { Thread.sleep(500); } catch (InterruptedException e) {}
+									try { Thread.sleep(350); } catch (InterruptedException e) {}
 								}
-							} else {
-								log("  → Focusing standard element via default click interaction...");
-								mobileElement.click();
-								try { Thread.sleep(500); } catch (InterruptedException e) {}
 
-								try {
-									mobileElement.clear();
-								} catch (Exception e) {
-									log("  ⚠️ Notice: Clear unsupported on standard view structure.");
+								log("  🏁 All digits sent. Letting the application process the auto-submit hook...");
+								try { Thread.sleep(3000); } catch (InterruptedException e) {}
+
+							} else {
+								// 🚀 FIXED TRANSITION HARMONY: Check if this is a tap-only action step (value is empty or blank)
+								if (value == null || value.trim().isEmpty() || value.equals("0")) {
+									log("  → Pure tap element detected. Executing clean interaction without string injection...");
+
+									// Give previous layout animations a moment to settle down completely
+									try { Thread.sleep(600); } catch (InterruptedException e) {}
+
+									mobileElement.click();
+
+									// Give the app thread a small window to fire the page navigation gateway smoothly
+									try { Thread.sleep(1500); } catch (InterruptedException e) {}
+								} else {
+									// Standard text input layout flow (for names, phone numbers, etc.)
+									log("  → Focusing standard input element via click interaction...");
+									mobileElement.click();
+									try { Thread.sleep(300); } catch (InterruptedException e) {}
+
+									try {
+										mobileElement.clear();
+									} catch (Exception e) {
+										log("  ⚠️ Notice: Clear unsupported on standard view structure.");
+									}
+									mobileElement.sendKeys(value);
 								}
-								mobileElement.sendKeys(value);
 							}
 
 							break;
