@@ -321,8 +321,9 @@ public class Main {
         List<TestStep> steps = StepParser.parseSteps(stepBlock);
         if (steps.isEmpty()) return;
 
+        // --- 1. DYNAMIC STEP INITIALIZATION SCAN (LOOK-AHEAD) ---
         for (TestStep step : steps) {
-            String action = step.getAction().toLowerCase();
+            String action = step.getAction().toLowerCase().trim();
             // Clean the role name immediately
             String role = (step.getValue() != null) ? step.getValue().toLowerCase().trim() : "";
 
@@ -338,13 +339,23 @@ public class Main {
                 }
             }
         }
-        // 2. SET INITIAL FOCUS
-        // If the first step isn't a switch, ensure we are on 'web' by default
-        String firstAction = steps.get(0).getAction().toLowerCase();
-        if (!firstAction.contains("switch")) {
+
+        // --- 2. SET CORRECT INITIAL RUNTIME FOCUS ---
+        String firstAction = steps.get(0).getAction().toLowerCase().trim();
+        String firstValue = (steps.get(0).getValue() != null) ? steps.get(0).getValue().toLowerCase().trim() : "";
+
+        if ((firstAction.equals("switch_to") || firstAction.equals("switchsession")) && !firstValue.isEmpty()) {
+            // 🚀 CRITICAL FIX: Explicitly shift active pointer context to the designated starting platform context
+            System.out.println("🎯 Setting Initial Test Focus context directly to: [" + firstValue.toUpperCase() + "]");
+            executor.switchSession(firstValue);
+        } else {
+            // If the first step is a regular interaction keyword, fall back safely to 'web'
+            System.out.println("🌐 No initial switch step found. Setting default session context focus to: [WEB]");
             executor.switchSession("web");
         }
 
+        // --- 3. HAND OFF TO EXECUTOR CORE RUNNER ---
+        System.out.println("🚀 Handing over synchronized session execution block to TestExecutor engine...");
         executor.run(sheetName, steps, testCaseName);
     }
     /**
