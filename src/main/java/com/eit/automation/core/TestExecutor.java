@@ -186,14 +186,16 @@ public class TestExecutor {
 			options.setAppPackage(config.getProperty(role + ".app.package"));
 			options.setAppActivity(config.getProperty(role + ".app.activity"));
 
-			// 🚀 SPEED OPTIMIZATION 1: Changed from true to false to clear out stuck background clutter
+			// 🚀 SPEED OPTIMIZATION 1: Wipes dirty app cache storage for a clean session flow
 			options.setNoReset(false);
 
-			// 🚀 SPEED OPTIMIZATION 2: Inject capabilities directly into your modern options object
+			// 🚀 SPEED OPTIMIZATION 2: Re-balanced optimization capabilities to prevent crash conflicts
 			options.setCapability("fullReset", false);
 			options.setCapability("shouldTerminateApp", true);
-			options.setCapability("skipDeviceInitialization", true);
-			options.setCapability("skipServerInstallation", true);
+
+			// CRITICAL FIX: Set to false while noReset is false so UIAutomator2 can properly hook the app process
+			options.setCapability("skipDeviceInitialization", false);
+			options.setCapability("skipServerInstallation", false);
 
 			URL url = new URL(config.getProperty("appium.url"));
 
@@ -600,7 +602,7 @@ public class TestExecutor {
 				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
-					log("  → Value: **** (hidden)");
+					log("  → Value: ** (hidden)");
 				} else {
 					log("  → Value: "
 							+ (value != null && value.length() > 60 ? value.substring(0, 60) + "..." : value));
@@ -618,11 +620,12 @@ public class TestExecutor {
 
 							String lowerXpath = xpath != null ? xpath.toLowerCase() : "";
 
-							// ⚡ Clean string evaluation (Removes lookup DOM bottlenecks)
+							// ⚡ PERFORMANCE BOOST: Clean string comparison (Removes findElements layout scanning lag)
 							boolean isOtpFieldXpath = lowerXpath.contains("verify") || lowerXpath.contains("otp");
 							boolean isInputTarget = lowerXpath.contains("edittext") || lowerXpath.contains("descendant") || lowerXpath.contains("widget.view");
 
-							// 🌍 Target strictly 4 or 6-digit numeric sequences (Protects phone numbers & text strings)
+							// 🌍 SAFE LENGTH LIMITS: Targets strictly 4 or 6-digit verification codes.
+							// This protects 10-digit mobile numbers or name strings from running slow.
 							boolean isNumericOtpValue = value != null && value.matches("\\d+") && (value.length() == 4 || value.length() == 6);
 
 							if ((isOtpFieldXpath || isInputTarget) && isNumericOtpValue) {
@@ -632,6 +635,7 @@ public class TestExecutor {
 								org.openqa.selenium.Point location = mobileElement.getLocation();
 								org.openqa.selenium.Dimension size = mobileElement.getSize();
 
+								// Focus tap dynamically relative to the width of the target container to unlock native keyboard focus
 								int targetX = location.getX() + (int)(size.getWidth() * 0.12);
 								int targetY = location.getY() + (size.getHeight() / 2);
 
@@ -670,6 +674,7 @@ public class TestExecutor {
 									log("    → Sending Native Key Stream Event: " + targetKey.name());
 									androidDriver.pressKey(new io.appium.java_client.android.nativekey.KeyEvent(targetKey));
 
+									// Smooth focus advancement delay
 									try { Thread.sleep(350); } catch (InterruptedException e) {}
 								}
 
@@ -677,30 +682,17 @@ public class TestExecutor {
 								try { Thread.sleep(3000); } catch (InterruptedException e) {}
 
 							} else {
-								// 🚀 FIXED TRANSITION HARMONY: Check if this is a tap-only action step (value is empty or blank)
-								if (value == null || value.trim().isEmpty() || value.equals("0")) {
-									log("  → Pure tap element detected. Executing clean interaction without string injection...");
+								// Standard text input execution (Runs instantly for phone numbers, checkboxes, names)
+								log("  → Focusing standard element via default click interaction...");
+								mobileElement.click();
+								try { Thread.sleep(200); } catch (InterruptedException e) {}
 
-									// Give previous layout animations a moment to settle down completely
-									try { Thread.sleep(600); } catch (InterruptedException e) {}
-
-									mobileElement.click();
-
-									// Give the app thread a small window to fire the page navigation gateway smoothly
-									try { Thread.sleep(1500); } catch (InterruptedException e) {}
-								} else {
-									// Standard text input layout flow (for names, phone numbers, etc.)
-									log("  → Focusing standard input element via click interaction...");
-									mobileElement.click();
-									try { Thread.sleep(300); } catch (InterruptedException e) {}
-
-									try {
-										mobileElement.clear();
-									} catch (Exception e) {
-										log("  ⚠️ Notice: Clear unsupported on standard view structure.");
-									}
-									mobileElement.sendKeys(value);
+								try {
+									mobileElement.clear();
+								} catch (Exception e) {
+									log("  ⚠️ Notice: Clear unsupported on standard view structure.");
 								}
+								mobileElement.sendKeys(value);
 							}
 
 							break;
