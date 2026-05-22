@@ -246,7 +246,6 @@ public class StepParser {
 		// Tap (Alternative to click for mobile clarity)
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap)\\b.*", "tap"));
 
-		ACTION_PATTERNS.add(new StepPattern(".\\b(tap_offset|click_offset|tapwithoffset)\\b.", "tap_offset"));
 		// Change the single dots (.) to dot-stars (.*)
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap_coordinate|click_coordinate|tap_xy)\\b.*", "tap_coordinate"));
 	}

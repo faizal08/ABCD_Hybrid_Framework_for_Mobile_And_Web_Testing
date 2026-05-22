@@ -5,6 +5,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.openqa.selenium.interactions.PointerInput;
+import org.openqa.selenium.interactions.Sequence;
+import org.openqa.selenium.interactions.Pause;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.Dimension;
+import java.time.Duration;
+import java.util.Collections;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -1223,35 +1230,69 @@ public class TestExecutor {
 
 			case "tap":
 				log("  → Tapping Mobile Element: " + xpath);
-				mobileActions.tap(xpath);
-				log("  ✓ Tapped");
+
+				// 1. Locate the element safely
+				WebElement element = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
+
+				// 2. Capture the layout hierarchy signature before tapping
+				String originalPageSource = driver.getPageSource();
+				boolean pageMoved = false;
+				int clickAttempts = 0;
+
+				// 3. Keep trying to click if high system lag swallows the first attempt
+				while (!pageMoved && clickAttempts < 3) {
+					clickAttempts++;
+					try {
+						log("  → Injected Tap Attempt #" + clickAttempts);
+						element.click();
+
+						// Give the app a 1.5-second buffer to handle the page transition under heavy load
+						Thread.sleep(1500);
+
+						// 4. Check if the screen layout changed. If it did, the app accepted the click!
+						String currentPageSource = driver.getPageSource();
+						if (!originalPageSource.equals(currentPageSource)) {
+							pageMoved = true;
+							log("  ✓ App responded! Page transition detected.");
+						} else {
+							log("  ⚠️ System Lag Alert: Button clicked, but app layout did not change. Retrying...");
+						}
+					} catch (Exception clickEx) {
+						// Fallback to absolute W3C coordinate tap if standard clicking throws a stale/interrupted error
+						try {
+							Point location = element.getLocation();
+							Dimension size = element.getSize();
+							int centerX = location.getX() + (size.getWidth() / 2);
+							int centerY = location.getY() + (size.getHeight() / 2);
+
+							PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+							Sequence tapSequence = new Sequence(finger, 1)
+									.addAction(finger.createPointerMove(Duration.ofMillis(0), PointerInput.Origin.viewport(), centerX, centerY))
+									.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
+									.addAction(new Pause(finger, Duration.ofMillis(50)))
+									.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+
+							((io.appium.java_client.AppiumDriver) driver).perform(Collections.singletonList(tapSequence));
+							Thread.sleep(1500);
+
+							if (!originalPageSource.equals(driver.getPageSource())) {
+								pageMoved = true;
+								log("  ✓ W3C Recovery successful! Page moved.");
+							}
+						} catch (Exception fallbackEx) {
+							log("  ❌ Coordinate retry failed: " + fallbackEx.getMessage());
+						}
+					}
+				}
+
+				if (!pageMoved) {
+					log("  ❌ Critical Framework Lag: Clicked button " + clickAttempts + " times, but app remains frozen on the same view.");
+					throw new RuntimeException("Page failed to change after multiple tap verification loops.");
+				}
+
+				log("  ✓ Step Completed Successfully");
 				break;
 
-			case "tap_offset":
-				log("  → Tapping Mobile Element with Offset: " + xpath);
-
-				// 1. Split your "90:50" string using the colon separator
-				String[] offsets = value.split(":");
-				double percentX = Double.parseDouble(offsets[0]) / 100.0; // 90% -> 0.90
-				double percentY = Double.parseDouble(offsets[1]) / 100.0; // 50% -> 0.50
-
-				// 2. Find the element using your framework's 'xpath' variable
-				WebElement element = driver.findElement(By.xpath(xpath));
-				int elWidth = element.getSize().getWidth();
-				int elHeight = element.getSize().getHeight();
-
-				// 3. Calculate exactly where to tap inside the element box
-				int targetX = (int) (elWidth * percentX);
-				int targetY = (int) (elHeight * percentY);
-
-				// 4. Execute the click action
-				new Actions(driver)
-						.moveToElement(element, targetX, targetY)
-						.click()
-						.perform();
-
-				log("  ✓ Tapped with Offset");
-				break;
 
 			case "tap_coordinate":
 				// Expects value format from Excel: "978:2224"
