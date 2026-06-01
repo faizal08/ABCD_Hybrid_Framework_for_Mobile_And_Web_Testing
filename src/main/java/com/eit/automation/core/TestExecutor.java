@@ -1252,7 +1252,7 @@ public class TestExecutor {
 						element.click();
 
 						// ⏳ UPDATED: Increased sleep from 1500ms to 3500ms to allow slow background transitions to process
-						Thread.sleep(3500);
+						Thread.sleep(5000);
 
 						// 4. Verify if the screen changed. If it did, the click successfully registered!
 						String currentPageSource = driver.getPageSource();

@@ -119,14 +119,11 @@ public class Main {
         }
     }
     /**
-     * Read test cases from Excel file - UPDATED TO HANDLE MULTIPLE SHEETS CORRECTLY
-     */
-    /**
-     * Read test cases from Excel file
+     * Read test cases from Excel file - UPDATED FOR HYBRID WEB/MOBILE LOOP CONFIGURATIONS [X]
      */
     private static void readExcelTestCases(String excelPath, ReportGenerator reportGenerator) throws Exception {
         String sheetNameConfig = config.getProperty("sheets.name");
-        String[] sheetNames = (sheetNameConfig != null) ? sheetNameConfig.split(",") : new String[0];
+        String[] rawSheetTokens = (sheetNameConfig != null) ? sheetNameConfig.split(",") : new String[0];
 
         try (FileInputStream fis = new FileInputStream(excelPath);
              Workbook workbook = new XSSFWorkbook(fis)) {
@@ -136,16 +133,49 @@ public class Main {
                 executor = new TestExecutor(reportGenerator, config);
             }
 
-            for (String rawSheetName : sheetNames) {
-                runSheetWithPrecondition(rawSheetName.trim(), workbook, reportGenerator);
+            for (String token : rawSheetTokens) {
+                String cleanToken = token.trim();
+                if (cleanToken.isEmpty()) continue;
+
+                String sheetName = cleanToken;
+                int repeatCount = 1; // Default to 1 if no bracket configuration is provided
+
+                // Extract brackets pattern: e.g., "AddCustomer[50]" or "MobileProfileUpdate[5]"
+                if (cleanToken.contains("[") && cleanToken.endsWith("]")) {
+                    try {
+                        sheetName = cleanToken.substring(0, cleanToken.indexOf("[")).trim();
+                        String countStr = cleanToken.substring(cleanToken.indexOf("[") + 1, cleanToken.length() - 1).trim();
+                        repeatCount = Integer.parseInt(countStr);
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Warning: Failed to parse iteration count for token '" + cleanToken + "'. Falling back to 1 loop.");
+                        sheetName = cleanToken.replace("[", "").replace("]", "").trim();
+                        repeatCount = 1;
+                    }
+                }
+
+                // Run the target hybrid sheet the exact number of times requested
+                System.out.println("\n🎯 Target Configuration Set: Sheet [" + sheetName + "] will iterate " + repeatCount + " time(s).");
+                for (int currentRun = 1; currentRun <= repeatCount; currentRun++) {
+                    System.out.println("\n========================================================");
+                    System.out.println("🔄 HYBRID STRESS LOOP ATTEMPT #" + currentRun + " OF " + repeatCount + " FOR SHEET: [" + sheetName + "]");
+                    System.out.println("========================================================");
+
+                    // Force-remove the target sheet from execution tracking for this iteration pass
+                    // so it bypasses the recursion lock safely
+                    executedSheets.remove(sheetName);
+
+                    runSheetWithPrecondition(sheetName, workbook, reportGenerator);
+                }
             }
         }
     }
 
     /**
      * Logic to handle the Precondition column dependency recursively.
+     * Preserves hybrid loop pipelines while cleanly checking structural data setups.
      */
     private static void runSheetWithPrecondition(String sheetName, Workbook workbook, ReportGenerator reportGenerator) throws Exception {
+        // If it's a structural background dependency sheet that ran already, do not re-run it
         if (executedSheets.contains(sheetName)) return;
 
         Sheet sheet = workbook.getSheet(sheetName);
@@ -154,6 +184,7 @@ public class Main {
             return;
         }
 
+        // --- MULTI-PRECONDITION SEARCH ---
         Row firstRow = sheet.getRow(1);
         if (firstRow != null) {
             Cell preconditionCell = firstRow.getCell(5);
@@ -179,16 +210,14 @@ public class Main {
         }
 
         processSheetData(sheet, sheetName, reportGenerator);
+
+        // Add to tracking list to prevent background dependency duplication loops
         executedSheets.add(sheetName);
     }
 
     /**
      * The actual loop that runs the test cases in the sheet.
-     * UPDATED: Now supports Smart Session Management for Web and Mobile.
-     */
-    /**
-     * The actual loop that runs the test cases in the sheet.
-     * UPDATED: Optimized for Universal Web + Mobile switching.
+     * UPDATED: Integrated with Smart Session Management and Multi-Iteration loop routines.
      */
     private static void processSheetData(Sheet sheet, String sheetName, ReportGenerator reportGenerator) {
         System.out.println("\n📖 Processing Sheet: [" + sheetName + "]");
@@ -224,7 +253,7 @@ public class Main {
                     videoRecorder.startRecording(reportGenerator.getReportDir(), videoFileName);
                 }
 
-                // 3. SMART SESSION INITIALIZATION (The Fix)
+                // 3. SMART SESSION INITIALIZATION WITH ITERATION STATE CONTROLS
                 // Logic: Perform login if we aren't logged in yet,
                 // EXCEPT if the test case is only for mobile (doesn't use the Web Admin at all)
                 boolean isPurelyMobile = stepBlock.toLowerCase().startsWith("switch_to") &&
@@ -233,20 +262,21 @@ public class Main {
                 if (!isWebLoggedIn && !isPurelyMobile) {
                     performInitialLogin(executor);
                     isWebLoggedIn = true;
-                } else if (isWebLoggedIn && executor.getDriverPool().containsKey("web")) {
-                    // If already logged in and using web, navigate to dashboard to reset state
+                } else if (isWebLoggedIn && executor.getDriverPool() != null && executor.getDriverPool().containsKey("web")) {
+                    // If already logged in and using web, navigate back to dashboard to securely reset state for next loop pass
                     String dashboardUrl = config.getProperty("dashboard.url");
                     if (dashboardUrl != null && !dashboardUrl.isEmpty()) {
                         executor.getDriverPool().get("web").get(dashboardUrl);
                     }
+                    try { Thread.sleep(1500); } catch (Exception ignored) {}
                 }
 
-                // 4. Run the actual test steps
+                // 4. Run the actual test steps (Web or Mobile dynamically via the step parser)
                 executeTestCase(sheetName, testCaseName, stepBlock, executor, reportGenerator);
 
             } catch (Exception e) {
                 System.err.println("❌ Error in " + testCaseName + ": " + e.getMessage());
-                e.printStackTrace(); // Added for better debugging
+                e.printStackTrace(); // Retained for deep debugging
             } finally {
                 // 5. Cleanup Video for this specific test case
                 try {
