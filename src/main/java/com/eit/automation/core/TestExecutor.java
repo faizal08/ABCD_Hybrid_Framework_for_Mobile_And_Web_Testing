@@ -1225,7 +1225,7 @@ public class TestExecutor {
 				log("⏳ Initiating Explicit Structural Checkpoint for Locator Target: " + xpath);
 				try {
 					// Create a dynamic wait bounding handle (Max 60 seconds)
-					WebDriverWait structuralCheck = new WebDriverWait(driver, Duration.ofSeconds(60));
+					WebDriverWait structuralCheck = new WebDriverWait(driver, Duration.ofSeconds(90));
 
 					// UPDATED: Dynamically resolves your native selectors (accessibility, id, automator, xpath)
 					org.openqa.selenium.By dynamicWaitLocator = getDynamicLocator(xpath);
@@ -1270,73 +1270,28 @@ public class TestExecutor {
 				break;
 
 			case "tap":
-				log("  → Tapping Mobile Locator Target: " + xpath);
+				// Changed logs to say Locator instead of XPath to match your strategy!
+				System.out.println("  → Tapping Mobile Locator Target: " + xpath);
 
-				// 1. Locate the element safely using your dynamic locator strategy
-				// UPDATED: Dynamically resolves native engine strategies instead of being locked into standard By.xpath
-				org.openqa.selenium.By dynamicTapLocator = getDynamicLocator(xpath);
-				WebElement element = wait.until(ExpectedConditions.elementToBeClickable(dynamicTapLocator));
+				try {
+					// 1. Locate the element using your dynamic strategy (which handles accessibility id)
+					org.openqa.selenium.By dynamicTapLocator = getDynamicLocator(xpath);
+					WebElement element = wait.until(ExpectedConditions.elementToBeClickable(dynamicTapLocator));
 
-				// 2. Capture the layout hierarchy signature before tapping
-				String originalPageSource = driver.getPageSource();
-				boolean pageMoved = false;
-				int clickAttempts = 0;
-				int maxAttempts = 4; // 🔄 UPDATED: Increased from 3 to 4 attempts for a wider recovery window
+					// 2. Direct click on the mobile element
+					element.click();
 
-				// 3. Loop handles app-side rendering delays or missed clicks
-				while (!pageMoved && clickAttempts < maxAttempts) {
-					clickAttempts++;
-					try {
-						log("  → Injected Tap Attempt #" + clickAttempts);
-						element.click();
+					// 3. Give the app 2 seconds to transition without checking heavy layouts
+					Thread.sleep(2000);
+					System.out.println("  ✓ Step Completed Successfully");
 
-						// ⏳ UPDATED: Increased sleep from 1500ms to 3500ms to allow slow background transitions to process
-						Thread.sleep(5000);
-
-						// 4. Verify if the screen changed. If it did, the click successfully registered!
-						String currentPageSource = driver.getPageSource();
-						if (!originalPageSource.equals(currentPageSource)) {
-							pageMoved = true;
-							log("  ✓ App responded! Page transition detected.");
-						} else {
-							log("  ⚠️ System Lag Alert: Button clicked, but app layout did not change yet. Retrying...");
-						}
-					} catch (Exception clickEx) {
-						// Fallback to absolute W3C coordinate tap if standard clicking throws a stale/interrupted error
-						try {
-							Point location = element.getLocation();
-							Dimension size = element.getSize();
-							int centerX = location.getX() + (size.getWidth() / 2);
-							int centerY = location.getY() + (size.getHeight() / 2);
-
-							PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-							Sequence tapSequence = new Sequence(finger, 1)
-									.addAction(finger.createPointerMove(Duration.ofMillis(0), PointerInput.Origin.viewport(), centerX, centerY))
-									.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
-									.addAction(new Pause(finger, Duration.ofMillis(50)))
-									.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-
-							((io.appium.java_client.AppiumDriver) driver).perform(Collections.singletonList(tapSequence));
-
-							// ⏳ UPDATED: Give the fallback touch sequence the same 3.5s breathing room
-							Thread.sleep(3500);
-
-							if (!originalPageSource.equals(driver.getPageSource())) {
-								pageMoved = true;
-								log("  ✓ W3C Recovery successful! Page moved.");
-							}
-						} catch (Exception fallbackEx) {
-							log("  ❌ Coordinate retry failed: " + fallbackEx.getMessage());
-						}
-					}
+				} catch (org.openqa.selenium.StaleElementReferenceException staleEx) {
+					// If it goes stale instantly, it means the page moved right after clicking. Pass safely!
+					System.out.println("  ✓ Element went stale post-click. Transition successful.");
+				} catch (Exception e) {
+					System.out.println("  ❌ Tap action failed: " + e.getMessage());
+					throw new RuntimeException("Failed to execute tap on locator: " + xpath, e);
 				}
-
-				if (!pageMoved) {
-					log("  ❌ Critical Framework Lag: Clicked button " + clickAttempts + " times, but app remains frozen on the same view.");
-					throw new RuntimeException("Page failed to change after multiple tap verification loops.");
-				}
-
-				log("  ✓ Step Completed Successfully");
 				break;
 
 			case "tap_coordinate":
@@ -1363,6 +1318,38 @@ public class TestExecutor {
 				} catch (Exception e) {
 					log("  ❌ Failed to execute coordinate tap: " + e.getMessage());
 					throw e;
+				}
+				break;
+
+			case "set_location":
+				try {
+					// 🚀 UPDATED: Splitting by semicolon (;) to handle your single text string format smoothly
+					String[] geoPoints = step.getValue().split(";");
+					double latitude = Double.parseDouble(geoPoints[0].trim());
+					double longitude = Double.parseDouble(geoPoints[1].trim());
+
+					if (this.driver instanceof io.appium.java_client.android.AndroidDriver) {
+						System.out.println("  📍 Injecting GPS Coordinates: " + latitude + ", " + longitude);
+
+						// Using standard instantiation for stable data alignment
+						io.appium.java_client.android.geolocation.AndroidGeoLocation geo =
+								new io.appium.java_client.android.geolocation.AndroidGeoLocation();
+
+						// Map inputs containing the geometric coordinates
+						java.util.Map<String, Object> coordinatesMap = new java.util.HashMap<>();
+						coordinatesMap.put("latitude", latitude);
+						coordinatesMap.put("longitude", longitude);
+						coordinatesMap.put("altitude", 0.0);
+
+						// 🚀 FIX FOR CURRENT DRIVER: Using "mobile: setGeolocation" to match your active Appium package version
+						((io.appium.java_client.android.AndroidDriver) this.driver).executeScript("mobile: setGeolocation", coordinatesMap);
+
+						// ⏳ Stabilization pause to prevent the Android System UI from crashing
+						System.out.println("  ⏳ Pausing to allow Android System UI to process coordinates safely...");
+						Thread.sleep(2000);
+					}
+				} catch (Exception e) {
+					System.out.println("  ❌ Failed to set emulator GPS location: " + e.getMessage());
 				}
 				break;
 

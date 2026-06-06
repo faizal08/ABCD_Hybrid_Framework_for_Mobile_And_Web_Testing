@@ -57,6 +57,7 @@ public class StepParser {
 		// Change the single dots (.) to dot-stars (.*)
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap_coordinate|click_coordinate|tap_xy)\\b.*", "tap_coordinate"));
 
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(set_location|setlocation|spoof_gps|inject_gps)\\b.*", "set_location"));
 		// ========================================
 		// 5. FILE UPLOAD
 		// ========================================
