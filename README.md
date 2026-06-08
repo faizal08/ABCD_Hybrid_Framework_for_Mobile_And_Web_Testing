@@ -18,8 +18,9 @@
 ---
 
 ## 📖 Overview
-The **ABCD Hybrid Framework** is an advanced evolution of the keyword-driven approach, designed to handle complex ecosystems where **Web Portals** and **Mobile Applications** (Android/iOS) must work in sync. Whether you are validating an Admin dashboard on Chrome or a Driver's real-time response on an Emulator, this framework manages all sessions through a single Excel-based logic using selenium and appium.
+The **ABCD Hybrid Framework** is an advanced evolution of the keyword-driven approach, designed to handle complex ecosystems where **Web Portals** and **Mobile Applications** (Android/iOS) must work in sync. Whether you are validating an Admin dashboard on Chrome or a Driver's And Customers real-time response and interaction on an Emulator, this framework manages all sessions through a single Excel-based logic using selenium and appium.
 
+![Framework Screenshot](framework_screenshot.png)
 ---
 
 ## 📸 Test Reporting Preview
@@ -50,15 +51,17 @@ This framework operates on a **Multi-Session Driver Pool** logic:
 ---
 
 ## 💻 Tech Stack
-| Component | Technology |
-| :--- | :--- |
-| **Language** | Java 17 |
-| **Web Engine** | Selenium WebDriver 4.27.0 |
-| **Mobile Engine** | Appium Java Client 9.3.0 |
-| **Automation Server** | Appium v3.4.2 |
+| Component | Technology                   |
+| :--- |:-----------------------------|
+| **Language** | Java 17                      |
+| **Web Engine** | Selenium WebDriver 4.27.0    |
+| **Mobile Engine** | Appium Java Client 9.3.0     |
+| **Automation Server** | Appium v3.4.2                |
+| **IDE / Emulator Manager** | Android Studio Panda 4       |
+| **Element Locator** | Appium Inspector             |
 | **Reporting** | Extent Reports / Custom HTML |
-| **Video Encoding** | JCodec 0.2.5 |
-| **Database** | PostgreSQL |
+| **Video Encoding** | JCodec 0.2.5                 |
+| **Database** | PostgreSQL                   |
 
 ---
 
@@ -74,7 +77,24 @@ To run this framework, you must have the following installed on your local machi
 * **Android Emulator** (Via Android Studio)
 * **Appium Inspector** 
 
-### 2. Framework Setup
+---
+
+## 2. 📱 Recommended Emulator Configuration
+
+| Setting | Selection |
+| :--- | :--- |
+| **Hardware** | Pixel 4 |
+| **API Level** | API 33 ("Tiramisu"; Android 13.0) |
+| **Services** | **Google APIs** *(Do not pick Google Play Store)* |
+| **System Image** | Google APIs Intel x86_64 (or ARM64) Atom System Image |
+| **Graphics (Advanced)** | Hardware - GLES 2.0 |
+| **Boot Option (Advanced)** | Cold Boot *(Avoid Quick Boot to prevent memory leak retention)* |
+
+> ⚠️ **WARNING:** Please ensure you use these exact emulator settings to guarantee optimized framework performance and prevent memory leak issues during extended test automation runs.
+
+------
+
+### 3. Framework Setup
 1.  **Clone the Repository:**
     ```bash
     git clone [https://github.com/faizal08/ABCD_Hybrid_Framework.git](https://github.com/faizal08/ABCD_Hybrid_Framework.git)
@@ -84,7 +104,7 @@ To run this framework, you must have the following installed on your local machi
     mvn clean install
     ```
 
-### 3. Running the Hybrid Suite
+### 4. Running the Hybrid Suite
 The framework uses system properties to point to specific configuration files:
 
 | Environment          | CLI Command                          |

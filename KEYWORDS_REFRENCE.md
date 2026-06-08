@@ -22,21 +22,40 @@ These keywords are the "brain" of the hybrid framework. They allow you to switch
 ---
 
 ## 📱 2. Mobile Specific Actions
-Handled by the `MobileActions.java` class. These keywords are optimized for Appium.
+Handled by the `MobileActions.java` class. These keywords are optimized for Appium. To ensure maximum execution speed and stability, the framework explicitly prioritizes direct locators (**Accessibility ID**, **Resource ID**, and **Android UI Automator**) over slower XPath expressions.
 
 | Action | Phrase Examples | Description |
 | :--- | :--- | :--- |
-| **`tap`** | tap, mobile click | Performs a touch interaction. Handles Accessibility IDs or XPaths. |
-| **`swipe`** | swipe, scroll | Swipes the screen. Values: **up**, **down**. |
-| **`hide_keyboard`** | hide keyboard, close keypad | Dismisses the mobile keyboard (essential for forms). |
+| **`tap`** | tap, mobile click | Performs a touch interaction. Parses fast-execution locators like `accessibility=`, `id=`, or `automator=` before falling back to XPath. |
+| **`type`** | type, enter text | Clears the field and inputs text into the targeted element using optimized locators. |
+| **`wait_until_visible`** | wait for element, wait until visible | Pauses execution dynamically until the target element is visible on the screen. |
+| **`swipe`** | swipe, scroll | Swipes the screen in the specified direction. Values: **up**, **down**. |
+| **`hide_keyboard`** | hide keyboard, close keypad | Dismisses the mobile keyboard to prevent UI obstruction (essential for form flows). |
+| **`set_location`** | set location, geo location | Inject custom GPS coordinates (Latitude;Longitude) into the active emulator mid-test. |
 
-**Excel Example:**
+### High-Speed Locator Syntax Examples
+When executing actions, use the prefix mapping below to bypass slow XPath parsing:
+* **Accessibility ID:** `accessibility=Get Started`
+* **Resource ID:** `id=com.we1.customer:id/et_email`
+* **UI Automator:** `automator=new UiSelector().text("Submit")`
 
-| Test Step Description | Action | Value | Target (XPath/ID) |
+---
+
+> ⚠️ **IMPORTANT ALERT ON WAITS:** > Always utilize the dynamic **`wait_until_visible`** action strategy. Relying on hardcoded thread sleeps or setting excessive execution timeout limits (e.g : wait,3000) can severely degrade emulator performance, exhaust system memory, and trigger network timeouts or ADB disconnections mid-run.
+
+---
+
+### Excel Test Sheet Example
+
+| Test Step Description | Action | Value | Target (Locator Strategy) |
 | :--- | :--- | :--- | :--- |
-| Click English Icon | **tap** | - | //android.widget.Button[@content-desc="English"] |
-| Scroll Down List | **swipe** | **down** | - |
-| Hide Mobile Keypad | **hide_keyboard** | - | - |
+| Click Get Started Button | **tap** | - | accessibility=Get Started |
+| Enter User Email Address | **type** | mohammed.faizal@example.com | id=com.we1.customer:id/et_email |
+| Click Form Submit Button | **tap** | - | automator=new UiSelector().text("Submit") |
+| Wait for Done | **wait_until_visible** | - | accessibility=Done |
+| Hide Active Keyboard | **hide_keyboard** | - | - |
+| Force Driver Location | **set_location** | 13.0533;80.2514 | - |
+| Scroll Down App Screen | **swipe** | **down** | - |
 
 ---
 
