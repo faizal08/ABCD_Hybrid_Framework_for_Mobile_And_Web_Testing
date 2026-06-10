@@ -295,8 +295,8 @@ public class TestExecutor {
 	public boolean run(String sheetName, List<TestStep> steps, String testCaseName) {
 		long testStartTime = System.currentTimeMillis();
 
-		// 🚀 1. AUTO DETECTION PRE-SCAN: Check if this Excel sheet contains any hybrid switches
-		this.isHybridFlow = false;
+		// 🚀 1. LOCAL SIGNATURE PRE-SCAN: Scan ONLY the incoming sheet for hybrid execution signatures
+		boolean currentSheetIsHybrid = false;
 		if (steps != null) {
 			for (TestStep step : steps) {
 				if (step.getAction() != null) {
@@ -305,26 +305,32 @@ public class TestExecutor {
 
 					if ((action.equals("switch_to") || action.equals("switchsession")) &&
 							(value.equals("user") || value.equals("driver"))) {
-						this.isHybridFlow = true;
-						break; // Hybrid signature found, stop searching
+						currentSheetIsHybrid = true;
+						break; // Hybrid signature found inside this specific sheet
 					}
 				}
 			}
 		}
 
-		// 🚀 2. RUNTIME VIEWPORT ADJUSTMENT: Dynamically apply layout sizes based on the pre-scan
+		// 🚀 2. STICKY FRAMEWORK LOCK: If this or any previously executed sheet triggered hybrid mode,
+		// lock the flag to true so pure-web dependency sheets (add customer/driver) don't alter the layout.
+		if (currentSheetIsHybrid) {
+			this.isHybridFlow = true;
+		}
+
+		// 🚀 3. RUNTIME VIEWPORT ADJUSTMENT: Dynamically handle window constraints based on the sticky flag state
 		WebDriver webDriverInstance = driverPool.get("web");
 		if (webDriverInstance != null) {
 			try {
-				// ⏳ STABILIZATION PAUSE: Gives Chrome window rendering thread 500ms to settle down
+				// ⏳ STABILIZATION PAUSE: Gives Chrome window rendering thread 500ms to settle down cleanly
 				Thread.sleep(500);
 
 				if (this.isHybridFlow) {
-					log("📱 Hybrid Flow Detected via Runtime Pre-Scan! Split-screen layout enabled. Adjusting position to X=0...");
+					log("📱 Hybrid Flow Context Active (Locked)! Retaining split-screen layout on the left side (X=0)...");
 					webDriverInstance.manage().window().setSize(new org.openqa.selenium.Dimension(960, 1080));
 					webDriverInstance.manage().window().setPosition(new org.openqa.selenium.Point(0, 0));
 				} else {
-					log("🖥️ Web-Only Flow Detected via Runtime Pre-Scan! Maximizing browser workspace...");
+					log("🖥️ Web-Only Flow Detected via Context Analysis! Maximizing browser workspace...");
 					webDriverInstance.manage().window().maximize();
 				}
 			} catch (Exception e) {
