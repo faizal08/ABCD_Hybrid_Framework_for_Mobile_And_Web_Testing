@@ -526,7 +526,6 @@ public class TestExecutor {
 		// 🚀 MASTER CENTRAL INTERCEPTOR: Smart Safe Property Extraction
 		if (step.getXpath() != null) {
 			String xp = step.getXpath().trim();
-			// Protect native mobile engines, and handle web XPaths using smart wrapper peeling
 			if (!xp.contains("automator=")) {
 				if (xp.startsWith("\"") && xp.endsWith("\"") && xp.length() > 1) {
 					xp = xp.substring(1, xp.length() - 1).trim();
@@ -560,9 +559,7 @@ public class TestExecutor {
 		}
 
 		// 1. GENERIC STRUCTURE EXTRACTOR FOR UPLOAD ACTIONS
-		// Smarter hybrid selector parsing: Isolates direct web XPaths & Appium selectors from valid file paths
 		if (step.getAction() != null && step.getAction().equalsIgnoreCase("uploadfile")) {
-
 			String fileTarget = null;
 			String locatorKeyTarget = null;
 
@@ -572,16 +569,13 @@ public class TestExecutor {
 			if (step.getContext() != null && !step.getContext().isEmpty()) textPool.add(step.getContext());
 
 			for (String text : textPool) {
-				// Rule A: If it clearly matches direct XPath or dynamic Appium prefix strings, it's a locator
 				if (text.startsWith("//") || text.startsWith("(") ||
 						text.startsWith("accessibility=") || text.startsWith("id=") || text.startsWith("automator=")) {
 					locatorKeyTarget = text;
 				}
-				// Rule B: If it doesn't match Rule A but contains slashes, it is definitely the target file path
 				else if (text.contains("/") || text.contains("\\")) {
 					fileTarget = text;
 				}
-				// Rule C: Pure property shorthands fall back cleanly as the element locator mapping key
 				else {
 					locatorKeyTarget = text;
 				}
@@ -593,30 +587,41 @@ public class TestExecutor {
 			if (fileTarget != null) {
 				step.setValue(fileTarget);
 			}
-
 			log("  🔀 INTERCEPTOR: Structural assignment complete. Key: [" + step.getXpath() + "], Path: [" + step.getValue() + "]");
 		}
 
 		// 2. Resolve Custom Element Mappings from Properties Map files
-		// Bypass translation rules instantly if it's already a direct raw XPath or native Appium hook
 		if (step.getXpath() != null && !step.getXpath().isEmpty()
 				&& !step.getXpath().startsWith("//") && !step.getXpath().startsWith("(")
 				&& !step.getXpath().startsWith("accessibility=") && !step.getXpath().startsWith("id=") && !step.getXpath().startsWith("automator=")) {
+
 			String resolvedXpath = com.eit.automation.core.LocatorMapper.getXPath(step.getXpath());
-			step.setXpath(resolvedXpath);
+			// If properties file returns a value, update the step target immediately
+			if (resolvedXpath != null && !resolvedXpath.isEmpty()) {
+				step.setXpath(resolvedXpath);
+			}
 		}
 
-		// 3. Resolve Value parameters (Crucial for hybrid mobile keyword fallback handling)
+		// 3. Resolve Value parameters
 		if (step.getValue() != null && !step.getValue().isEmpty()
 				&& !step.getValue().contains("/") && !step.getValue().contains("\\")
 				&& !step.getValue().startsWith("//") && !step.getValue().startsWith("(")
 				&& !step.getValue().startsWith("accessibility=") && !step.getValue().startsWith("id=") && !step.getValue().startsWith("automator=")) {
 			String resolvedValue = com.eit.automation.core.LocatorMapper.getXPath(step.getValue());
-			step.setValue(resolvedValue);
+			if (resolvedValue != null && !resolvedValue.isEmpty()) {
+				step.setValue(resolvedValue);
+			}
+		}
+
+		// FIX: 🚀 LIVE VARIABLE INJECTOR (Solves Step 22 {areaName} issue)
+		// Seamlessly resolves property file XPaths containing runtime template markers
+		if (step.getXpath() != null && step.getXpath().contains("{") && step.getXpath().contains("}")) {
+			String processedXpath = com.eit.automation.parser.StepParser.replaceSavedVariablesOnly(step.getXpath());
+			step.setXpath(processedXpath);
 		}
 		// 🚀 MASTER CENTRAL INTERCEPTOR END
 
-		// --- Continue with your original framework extraction logic ---
+		// --- Continue with original framework extraction logic ---
 		String action = step.getAction().toLowerCase();
 		String value = step.getValue();
 		String xpath = step.getXpath();
@@ -624,13 +629,7 @@ public class TestExecutor {
 
 		log("  ⚙ Action: " + action.toUpperCase());
 
-   /*// HOTFIX: Override file upload path with user provided path
-   if ((action.equals("uploadfile") || action.equals("robotupload")) && value != null) {
-      log("  ⚠ HOTFIX: Overriding file path with 'C:\\Vehicle Image\\Auto.jpg'");
-      value = "C:\\Vehicle Image\\Auto.jpg";
-   }*/
-
-		// 1. PAGEFACTORY LOOKUP (If XPath is empty, try to match value/context to a Page Object field)
+		// 1. PAGEFACTORY LOOKUP
 		if ((xpath == null || xpath.isEmpty()) && (value != null && !value.isEmpty())) {
 			if (pageObjectManager != null) {
 				WebElement element = pageObjectManager.findElementByName(value);
@@ -644,23 +643,21 @@ public class TestExecutor {
 		if (xpath == null || xpath.isEmpty()) {
 			if (value != null && !value.isEmpty()) {
 
-				// Detect if the value is actually an XPath string instead of a label
 				boolean isDirectXPath = value.startsWith("//") || value.startsWith("(");
 
 				if (isDirectXPath) {
-					xpath = value; // Use the value as the XPath directly
+					xpath = value;
 					log("  → Using direct XPath from Value column: " + xpath);
 				}
 				else if (!(driver instanceof io.appium.java_client.AppiumDriver) &&
 						!action.startsWith("verifytoast") &&
-						!action.equals("robotupload")) {
+						!action.equals("robotupload") &&
+						!action.equalsIgnoreCase("drawpolygon")) { // Safety bypass preserved for canvas layout steps
 
-					// Only auto-generate complex Web XPaths if we are NOT on Mobile
 					xpath = generateXPathFromValue(value, context);
 					log("  → Auto-generated Web XPath: " + xpath);
 				}
 				else if (driver instanceof io.appium.java_client.AppiumDriver) {
-					// For mobile, preserve the raw prefixed target string (accessibility=, id=, automator=)
 					xpath = value;
 					log("  → Using Prefixed Mobile Engine Selector: " + xpath);
 				}
@@ -677,6 +674,9 @@ public class TestExecutor {
 		// Synchronize local tracking modifications back to master TestStep object reference
 		step.setXpath(xpath);
 		step.setValue(value);
+
+		// --- Proceed to your framework's actual WebElement interaction and action logic below ---
+
 
 
 		switch (action) {

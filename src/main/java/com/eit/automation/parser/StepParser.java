@@ -786,4 +786,20 @@ public class StepParser {
 		return sb.toString();
 	}
 
+	/**
+	 * 🚀 LIVE EXTRACTED VARIABLE INJECTOR FOR TARGET XPATHS
+	 * Scans resolved property file strings and injects runtime saved values
+	 */
+	public static String replaceSavedVariablesOnly(String xpath) {
+		if (xpath == null || xpath.isEmpty()) return xpath;
+
+		// Iterates over all runtime values memorized via the ">>" syntax
+		for (Map.Entry<String, String> entry : savedValues.entrySet()) {
+			String placeholder = "{" + entry.getKey() + "}";
+			if (xpath.contains(placeholder)) {
+				xpath = xpath.replace(placeholder, entry.getValue());
+			}
+		}
+		return xpath;
+	}
 }
