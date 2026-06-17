@@ -2,6 +2,73 @@
 
 This document is the official reference for writing automated test cases. The `StepParser` uses natural language processing (Regex) to match your Excel steps to automation actions.
 
+## 📊 Quick Start: How to Write Test Cases in Excel
+
+To ensure the framework parses your automation suites correctly, you must follow the strict formatting structure outlined below when designing your Excel sheets.
+
+![Excel Screenshot](Excel_screenshot.png)
+
+### I. The Core Columns (Where to Write)
+
+* **Column E (5th Column) - Test Step Description:** This is the core execution column where the `StepParser` reads your test actions line-by-line.
+* **Column F (6th Column) - Precondition & Data Dependency:** This column manages structural dependencies. If your current sheet relies on data or a state created by another sheet, use the **`RunSheet:`** keyword followed immediately by the target sheet name (e.g., `RunSheet: SuperAdminLogin`). The framework will temporarily pause execution of the current sheet, execute the target dependency sheet completely to set up the context, and then seamlessly return to continue running your active test case.
+
+---
+
+### II. Column E Formatting & The 3-Comma Syntax Rule
+
+Every automated instruction written inside **Column E** must follow a strict **3-comma layout structure** separating 4 parameters:
+
+---
+
+<br>
+
+<div align="center">
+  <p>⚠️ <b>CRITICAL RULES FOR WRITING TEST STEPS</b> ⚠️</p>
+  <table>
+    <tr>
+      <td align="center" style="background-color: #2d3748; padding: 20px; border: 3px solid #e53e3e; border-radius: 8px;">
+        <span style="font-size: 26px; font-weight: bold; color: #f7fafc; letter-spacing: 1px; font-family: monospace;">
+          Test Step Description , Action , Value , "XPath/Locator"
+        </span>
+      </td>
+    </tr>
+  </table>
+  <p><i>Every automated instruction written inside <b>Column E</b> must follow this exact 3-comma layout.</i></p>
+</div>
+
+<br>
+
+---
+
+1. **Test Step Description:** A clean human-readable note describing what the step is doing for validation purposes.
+2. **Action:** The explicit system action keyword that the test executor will execute (e.g., `click`, `type`, `wait`, `uploadfile`, `switch_to`).
+3. **Value:** The parameters or inputs needed for the action (such as text values, numbers, dynamic variables, or system file paths).
+4. **Locator / XPath:** The selector value or properties key, which **must always be enclosed in double quotes (`""`)**.
+
+---
+### 📋 Formatting Syntax Reference Examples
+
+Review these real execution scenarios to understand how empty parameters and quote structures change based on the action type:
+
+#### 1. Standard Field Input (Text Entry)
+`1.Enter Email, type, super_admin@gmail.com, "web.global.login.email"`
+
+#### 2. Click Action (No Value Parameter)
+`2.Click Submit, click, , "web.global.action.submit"`
+> 📌 **Note:** Since submit has no value, the value place is left empty, which is why there are double commas (,,) there.
+
+#### 3. Static Timeout Wait (No Locator Parameter)
+`3.wait for upload, wait, 3000, `
+> 📌 **Note:** In this case, the XPath is not there, so that field is left empty.
+
+#### 4. Document Upload Paths
+`4.Upload Profile Image, uploadfile, "src/main/resources/test-data/customer.jpg", "admin.customer.upload_profile_img"`
+> 📌 **Note:** For photo upload, the value file path should also be in double quotes.
+
+#### 5. Context Switch (No Locator Parameter)
+`5.Load Driver App, switch_to, driver, `
+> 📌 **Note:** Here, for switching to the driver mobile app, there is no XPath, so leave it empty. Always agree to the 3-comma rule.
 ---
 
 ## 🚀 1. Hybrid Orchestration (Multi-Session)
@@ -56,12 +123,12 @@ Your Excel sheet stays clean, readable, and focused purely on business logic. Us
 | Step | Test Step Description | Action | Value | Target (Property Key Only) |
 | :--- | :--- | :--- | :--- | :--- |
 | **1** | Open Admin Panel | `openurl` | - | https://dev.we1.co/#/login |
-| **2** | Click Drivers Menu | `click` | - | **admin.drivers.menu.icon** |
-| **3** | Type Unique Name | `type` | Onboard_{randomAlpha} >> autoName | **admin.drivers.fullname.input** |
-| **4** | Type Unique Phone | `type` | 98{timestamp} >> driverPhone | **admin.drivers.phone.input** |
-| **5** | Attach Profile Photo | `uploadfile` | src/main/resources/test-data/driver.jpg | **admin.drivers.profile_image.file** |
-| **6** | Attach Vehicle Photo | `uploadfile` | src/main/resources/test-data/auto.jpg | **admin.drivers.vehicle_image.file** |
-| **7** | Click Save Record | `click` | - | **admin.drivers.submit.button** |
+| **2** | Click Drivers Menu | `click` | - | "**admin.drivers.menu.icon**" |
+| **3** | Type Unique Name | `type` | Onboard_{randomAlpha} >> autoName | "**admin.drivers.fullname.input**" |
+| **4** | Type Unique Phone | `type` | 98{timestamp} >> driverPhone | "**admin.drivers.phone.input**" |
+| **5** | Attach Profile Photo | `uploadfile` | src/main/resources/test-data/driver.jpg | "**admin.drivers.profile_image.file**" |
+| **6** | Attach Vehicle Photo | `uploadfile` | src/main/resources/test-data/auto.jpg | "**admin.drivers.vehicle_image.file**" |
+| **7** | Click Save Record | `click` | - | "**admin.drivers.submit.button**" |
 
 ---
 
@@ -93,10 +160,10 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 | Test Step Description | Action | Value | Target (Locator Strategy) |
 | :--- | :--- | :--- | :--- |
-| Click Get Started Button | **tap** | - | accessibility=Get Started |
-| Enter User Email Address | **type** | mohammed.faizal@example.com | id=com.we1.customer:id/et_email |
-| Click Form Submit Button | **tap** | - | automator=new UiSelector().text("Submit") |
-| Wait for Done | **wait_until_visible** | - | accessibility=Done |
+| Click Get Started Button | **tap** | - | "accessibility=Get Started" |
+| Enter User Email Address | **type** | mohammed.faizal@example.com | "id=com.we1.customer:id/et_email" |
+| Click Form Submit Button | **tap** | - | "automator=new UiSelector().text("Submit")" |
+| Wait for Done | **wait_until_visible** | - | "accessibility=Done" |
 | Hide Active Keyboard | **hide_keyboard** | - | - |
 | Force Driver Location | **set_location** | 13.0533;80.2514 | - |
 | Scroll Down App Screen | **swipe** | **down** | - |
@@ -137,9 +204,9 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Enter SuperAdmin Email | type | admin@gmail.com | //input[@placeholder='Enter email'] |
-| Click Login Button | click | - | //button[@type='submit'] |
-| Scroll Grid Right | tab | 5 | //div[@class='grid-body'] |
+| Enter SuperAdmin Email | type | admin@gmail.com | "//input[@placeholder='Enter email']" |
+| Click Login Button | click | - | "//button[@type='submit']" |
+| Scroll Grid Right | tab | 5 | "//div[@class='grid-body']" |
 
 ---
 
@@ -156,7 +223,7 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Upload License Image | uploadfile | src/main/resources/test-data/license.jpg | //input[@type='file'] |
+| Upload License Image | uploadfile | "src/main/resources/test-data/license.jpg" | "//input[@type='file']" |
 
 ---
 
@@ -175,8 +242,8 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Verify Dashboard Load | verifyvisible | - | //div[contains(text(),'Statistics')] |
-| Check Success Toast | verifytext | Added Successfully | //div[@role='alert'] |
+| Verify Dashboard Load | verifyvisible | - | "//div[contains(text(),'Statistics')]" |
+| Check Success Toast | verifytext | Added Successfully | "//div[@role='alert']" |
 
 ---
 
@@ -193,9 +260,9 @@ These keywords allow you to perform strict validation on whether an element shou
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Check Transport Menu exists | element_present | - | //h2[normalize-space()='Transport Services'] |
-| Check Delivery Service exists | element_absent | - | //h2[normalize-space()='Delivery Services'] |
-| Check Provider Service exists | element_absent | - | //h2[normalize-space()='Provider Services'] |
+| Check Transport Menu exists | element_present | - | "//h2[normalize-space()='Transport Services']" |
+| Check Delivery Service exists | element_absent | - | "//h2[normalize-space()='Delivery Services']" |
+| Check Provider Service exists | element_absent | - | "//h2[normalize-space()='Provider Services']" |
 
 > **💡 Technical Note:** When using `element_absent`, the framework automatically sets `implicitlyWait` to 0 seconds to ensure the check is instantaneous, then restores your default settings immediately after.
 ---
@@ -235,7 +302,7 @@ These keywords allow you to perform strict validation on whether an element shou
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Map City Boundary | drawpolygon | -120;-120 : 120;-120 : 120;120 : -120;120 | //div[@class='map-container'] |
+| Map City Boundary | drawpolygon | -120;-120 : 120;-120 : 120;120 : -120;120 | "//div[@class='map-container']" |
 
 ---
 
@@ -251,8 +318,8 @@ These keywords allow you to perform strict validation on whether an element shou
 
 | Test Step Description | Action | Value                | Target (XPath) |
 | :--- | :--- |:---------------------| :--- |
-| Enter Unique Area | type | Chennai_{timestamp}  | //input[@id='areaName'] |
-| Enter Plumber Name | type | Plumber{randomAlpha} | //input[@id='providerName'] |
+| Enter Unique Area | type | Chennai_{timestamp}  | "//input[@id='areaName']" |
+| Enter Plumber Name | type | Plumber{randomAlpha} | "//input[@id='providerName']" |
 
 > **⚠️ STRICT VALIDATION RULE:** If a field (like Plumber Name) does not allow numbers or underscores, use **`Plumber{randomAlpha}`** directly (No spaces, no symbols).
 
@@ -280,9 +347,9 @@ Wrap the variable name in curly braces `{}`.
 
 | Step | Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Create Store Name | type | KFC_{timestamp} >> storeName | //input[@id='sname'] |
+| 1 | Create Store Name | type | KFC_{timestamp} >> storeName | "//input[@id='sname']" |
 | 2 | ...Other Steps... | ... | ... | ... |
-| 3 | Filter Created Store | type | {storeName} | //input[@placeholder='Search'] |
+| 3 | Filter Created Store | type | {storeName} | "//input[@placeholder='Search']" |
 
 ---
 
@@ -346,9 +413,9 @@ To prevent accidental data loss, the framework includes a **Safety Check**:
 
 | Test Step Description | Action | Value | Target (XPath) |
 | :--- | :--- | :--- | :--- |
-| Remove Test Area | sql delete | DELETE FROM we1.admin_area_list WHERE name = '{areaName}'; | - |
-| Remove Auto Driver | sql delete | DELETE FROM we1.providers WHERE first_name = '{autoName}'; | - |
-| Remove Bank Details | sql delete | DELETE FROM we1.provider_bank_details WHERE holder_name = '{autoName}'; | - |
+| Remove Test Area | sql delete | "DELETE FROM we1.admin_area_list WHERE name = '{areaName}';" | - |
+| Remove Auto Driver | sql delete | "DELETE FROM we1.providers WHERE first_name = '{autoName}';" | - |
+| Remove Bank Details | sql delete | "DELETE FROM we1.provider_bank_details WHERE holder_name = '{autoName}';" | - |
 | Hard Pause | wait | 2 | - |
 
 ### **Common Cleanup Queries**
