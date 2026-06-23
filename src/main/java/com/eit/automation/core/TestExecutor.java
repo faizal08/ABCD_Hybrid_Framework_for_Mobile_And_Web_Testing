@@ -812,13 +812,20 @@ public class TestExecutor {
 			case "enter":
 				log("  → XPath/Locator: " + xpath);
 
+				// 🚀 DYNAMIC VARIABLE LOOKUP: Resolves configuration keys (e.g. regression.driver.phone) automatically!
+				String resolvedValue = value;
+				if (value != null && config != null && config.containsKey(value.trim())) {
+					resolvedValue = config.getProperty(value.trim());
+					log("  ⚙️ Dynamic Test Data Resolved: Replacing property key '" + value.trim() + "' with configured value.");
+				}
+
 				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
 					log("  → Value: ** (hidden)");
 				} else {
 					log("  → Value: "
-							+ (value != null && value.length() > 60 ? value.substring(0, 60) + "..." : value));
+							+ (resolvedValue != null && resolvedValue.length() > 60 ? resolvedValue.substring(0, 60) + "..." : resolvedValue));
 				}
 
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
@@ -837,8 +844,8 @@ public class TestExecutor {
 							boolean isOtpFieldXpath = lowerXpath.contains("verify") || lowerXpath.contains("otp") || lowerXpath.contains("instance") || lowerXpath.contains("automator");
 							boolean isInputTarget = lowerXpath.contains("edittext") || lowerXpath.contains("descendant") || lowerXpath.contains("widget.view");
 
-							// 🌍 SAFE LENGTH LIMITS: Targets strictly 4 or 6-digit verification codes.
-							boolean isNumericOtpValue = value != null && value.matches("\\d+") && (value.length() == 4 || value.length() == 6);
+							// 🌍 SAFE LENGTH LIMITS: Targets strictly 4 or 6-digit verification codes using the resolvedValue.
+							boolean isNumericOtpValue = resolvedValue != null && resolvedValue.matches("\\d+") && (resolvedValue.length() == 4 || resolvedValue.length() == 6);
 
 							if ((isOtpFieldXpath || isInputTarget) && isNumericOtpValue) {
 								log("  ⚠️ Universal Numeric OTP Sequence Detected. Executing hardware stream focus tap...");
@@ -866,7 +873,7 @@ public class TestExecutor {
 								try { Thread.sleep(1200); } catch (InterruptedException e) {}
 
 								log("  🚀 Injecting native hardware KeyEvents directly into focus stream...");
-								for (char ch : value.toCharArray()) {
+								for (char ch : resolvedValue.toCharArray()) {
 									io.appium.java_client.android.nativekey.AndroidKey targetKey;
 
 									switch (ch) {
@@ -894,7 +901,7 @@ public class TestExecutor {
 								try { Thread.sleep(3000); } catch (InterruptedException e) {}
 
 							} else {
-								// Standard text input execution (Runs instantly for phone numbers, checkboxes, names)
+								// Standard text input execution (Runs instantly for phone numbers, checkboxes, names) using resolvedValue
 								log("  → Focusing standard element via default click interaction...");
 								mobileElement.click();
 								try { Thread.sleep(200); } catch (InterruptedException e) {}
@@ -904,7 +911,7 @@ public class TestExecutor {
 								} catch (Exception e) {
 									log("  ⚠️ Notice: Clear unsupported on standard view structure.");
 								}
-								mobileElement.sendKeys(value);
+								mobileElement.sendKeys(resolvedValue);
 							}
 
 							break;
@@ -918,7 +925,7 @@ public class TestExecutor {
 
 					try { mobileActions.hideKeyboard(); } catch (Exception e) {}
 				} else {
-					inputActions.typeText(xpath, value);
+					inputActions.typeText(xpath, resolvedValue);
 				}
 
 				log("  ✓ Text entered successfully");
