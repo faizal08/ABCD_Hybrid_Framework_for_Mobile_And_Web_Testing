@@ -14,6 +14,13 @@ public class StepParser {
 	private static boolean detailedLogging = false; // Reduced verbosity
 
 	private static Map<String, String> savedValues = new HashMap<>();
+
+	public static void saveRuntimeValue(String key, String value) {
+		if (key != null && value != null) {
+			savedValues.put(key.trim(), value.trim());
+			System.out.println("💾 [StepParser Saved] Key: " + key.trim() + " | Value: " + value.trim());
+		}
+	}
 	private static DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
 	// Initializing Regex Patterns
@@ -119,6 +126,8 @@ public class StepParser {
 
 		// For Test Data Cleanup and Accessing Database
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(sql delete|db cleanup|execute sql)\\b.*", "sql_cleanup"));
+		// For fetching runtime values directly from database records
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(fetch_db_value|get_db_value|query_db)\\b.*", "fetch_db_value"));
 
 		// ========================================
 		// 5.5 AUTOIT (System Interactions)

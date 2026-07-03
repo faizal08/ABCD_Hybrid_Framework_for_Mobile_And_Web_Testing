@@ -842,6 +842,12 @@ public class TestExecutor {
 					log("  ⚙️ Dynamic Test Data Resolved: Replacing property key '" + value.trim() + "' with configured value.");
 				}
 
+				// 🚀 ✅ RUNTIME PLACEHOLDER RESOLUTION:
+				// Resolves database/extracted values (like {ride_otp}) right before performing the action
+				if (resolvedValue != null && resolvedValue.contains("{") && resolvedValue.contains("}")) {
+					resolvedValue = com.eit.automation.parser.StepParser.processPlaceholders(resolvedValue);
+				}
+
 				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
@@ -1436,6 +1442,42 @@ public class TestExecutor {
 					log("  ✓ SQL Cleanup executed successfully");
 				} catch (Exception e) {
 					log("  ❌ SQL Cleanup Failed: " + e.getMessage());
+					throw e;
+				}
+				break;
+
+			case "fetch_db_value":
+				try {
+					// For safety, let the database transactions completely clear before reading
+					try { Thread.sleep(2000); } catch (InterruptedException e) {}
+
+					String sqlQuery = xpath; // Excel Locator column holds the SQL query
+					String variableName = value; // Excel Value column holds the context tracker variable name
+
+					if (sqlQuery == null || sqlQuery.trim().isEmpty()) {
+						throw new IllegalArgumentException("❌ Excel column 'Locator' cannot be blank when using fetch_db_value command.");
+					}
+					if (variableName == null || variableName.trim().isEmpty()) {
+						throw new IllegalArgumentException("❌ Excel column 'Value' cannot be blank when using fetch_db_value command.");
+					}
+
+					log("  → Attempting DB fetch for variable: {" + variableName + "}");
+					String dbResult = com.eit.automation.utils.DatabaseUtils.executeQueryAndFetchValue(sqlQuery, this.config);
+
+					if (dbResult == null) {
+						throw new RuntimeException("❌ Database fetch failed! Zero data rows returned for query: " + sqlQuery);
+					}
+
+					// ❌ REMOVE OR COMMENT THIS OLD SCENARIO CONTEXT LINE:
+					// com.eit.automation.utils.ScenarioContext.saveContext(variableName.trim(), dbResult);
+
+					// ✅ ADD THIS LINE: Pass it to your existing placeholder engine map!
+					com.eit.automation.parser.StepParser.saveRuntimeValue(variableName.trim(), dbResult);
+
+					log("  ✓ Successfully retrieved from DB [" + dbResult + "] and mapped to variable: " + variableName);
+
+				} catch (Exception e) {
+					log("  ❌ Database Fetch Operation Failed: " + e.getMessage());
 					throw e;
 				}
 				break;

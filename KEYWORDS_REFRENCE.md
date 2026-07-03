@@ -271,6 +271,14 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <td><i>"mobile.driver.independent_contractor.checkbox"</i></td>
     <td>No Value Needed</td>
   </tr>
+<tr>
+    <td>Fetch OTP/Referal Code From DB</td>
+    <td><code>fetch_db_value</code></td>
+    <td>ride_otp[Use any variable name to store fetch data from db]</td>
+    <td><i>"SELECT otp FROM we1.user_ride_booking ORDER BY id DESC LIMIT 1"[write Query In Place Of Xpath]</i></td>
+    <td>Use Any Variable</td>
+  </tr>
+
   </tbody>
 </table>
 
@@ -390,6 +398,10 @@ Every automated instruction written inside **Column E** must follow a strict **3
 
 #### **# 🔄 “wait_if_present” Keyword Format #**
 `Wait If Element Is Present,wait_if_present,,"Locator"`
+
+
+#### **# 🔄 “fetch_db_value” Keyword Format #**
+`Fetch OTP/Refereal Code from DB,fetch_db_value,variable to store fetched balue from db,"Query"`
 
 ---
 
@@ -708,54 +720,94 @@ In the **Precondition** column (Column 5) of the **very first test case row** (R
 > **💡 Pro-Tip:** You can include as much descriptive text as you like in the Precondition column (authentication steps, system requirements, etc.). The framework is smart enough to find the `RunSheet:` keyword hidden anywhere in that text.
 
 ---
+## 🗄️ 15. Database Operations (Extraction & Cleanup)
 
-## 🗄️ 15. Database Cleanup & Maintenance
-
-This feature allows the framework to interact directly with the PostgreSQL database to remove test data after a suite finishes. This ensures your environment remains clean and prevents "Duplicate Entry" errors during repeated test runs.
+This module allows the automation framework to interact directly with the PostgreSQL database. It supports two critical workflows: extracting live database values (like dynamic OTPs) mid-test to bypass hardware UI barriers, and clearing out test data at the end of a run to prevent duplicate entry blocks.
 
 > [!CAUTION]
-> ### ⚠️ **WARNING: USE WITH EXTREME CAUTION**
-> This tool interacts **directly** with the production/test database. Incorrect queries can result in permanent data loss.
-> * **Double-check your syntax** before adding queries to Excel.
-> * **Always use specific identifiers** (like `{areaName}`) to ensure you only delete the data you created.
-> * **Never** attempt to run queries on tables you are not authorized to modify.
-
-### **The Safety Firewall**
-To prevent accidental data loss, the framework includes a **Safety Check**:
-* Any `DELETE` or `UPDATE` query **must** contain a `WHERE` clause.
-* If a `WHERE` clause is missing, the framework will block the execution and throw an error to protect the database integrity.
-
-| Action | Phrase Examples | Description |
-| :--- | :--- | :--- |
-| **sql_cleanup** | `sql delete`, `sql cleanup`, `execute sql` | Executes a SQL query against the configured database. |
-
-### **How to Use**
-1.  **Action:** Use `sql delete` or `sql_cleanup` in the Action column.
-2.  **Value:** Write the full SQL query.
-3.  **Dynamic Variables:** You can use saved variables (e.g., `{areaName}`) inside your SQL query to target the specific data created during that test run.
-
-**Excel Example:**
-
-| Test Step Description | Action | Value | Target (XPath) |
-| :--- | :--- | :--- | :--- |
-| Remove Test Area | sql delete | "DELETE FROM we1.admin_area_list WHERE name = '{areaName}';" | - |
-| Remove Auto Driver | sql delete | "DELETE FROM we1.providers WHERE first_name = '{autoName}';" | - |
-| Remove Bank Details | sql delete | "DELETE FROM we1.provider_bank_details WHERE holder_name = '{autoName}';" | - |
-| Hard Pause | wait | 2 | - |
-
-### **Common Cleanup Queries**
-Below are frequently used cleanup templates for various modules:
-
-| Module | SQL Template |
-| :--- | :--- |
-| **Store/Hotel** | `DELETE FROM we1.store_details WHERE name = '{storeName}';` |
-| **Users** | `DELETE FROM we1.users WHERE first_name = '{customerName}';` |
-| **Documents** | `DELETE FROM we1.required_documents WHERE name = '{documentName}';` |
-| **Promo Codes** | `DELETE FROM we1.promocode_details WHERE promo_code = '{promoCodeName}';` |
-
-> **💡 Best Practice:** > Always place your cleanup steps at the **very end** of your Excel sheet in the test sheet named "DataCleanUpSheet" since some data is required for completion of other tests. It is also recommended to add a small `wait` (e.g., 2 seconds) after the final DB command to allow the system to refresh its state.
+> ### ⚠️ **WARNING: DATABASE WRITE & MUTATION RULES**
+> Destructive actions interact **directly** with the target database. Careless queries can result in permanent data loss.
+> * **Double-check your syntax** before saving queries to your Excel sheets.
+> * **Always scope queries with specific identifiers** (like `{areaName}` or `{autoName}`) to mutate only test-specific records.
+> * **Never** attempt to execute queries on schemas or tables you are not authorized to modify.
 
 ---
+
+### 🛡️ The Safety Firewalls
+
+To prevent catastrophic queries or race conditions, the framework enforces the following execution guards natively:
+
+1. **Destructive Clause Enforcement:** Any `sql delete` or `sql_cleanup` query **must** explicitly contain a `WHERE` clause. If a `WHERE` constraint is missing, the framework forcefully blocks execution and throws a `RuntimeException` to preserve database integrity.
+2. **Transaction Clearance Delay:** The data extraction engine (`fetch_db_value`) executes a built-in sleep cycle prior to querying. This allows upstream application API loops and asynchronous database commits to completely finalize before the framework reads the state.
+
+---
+
+### 🕹️ Supported Database Actions
+
+| Action | Phrase Matchers | Description |
+| :--- | :--- | :--- |
+| **fetch_db_value** | `fetch_db_value`, `get db value` | Queries the database, extracts a single data point, and maps it directly into the runtime placeholder engine. |
+| **sql_cleanup** | `sql delete`, `sql cleanup`, `execute sql` | Executes a mutating SQL statement (e.g., `DELETE`, `UPDATE`) against the configured database. |
+
+---
+
+### 📥 1. Extracting Dynamic Values (`fetch_db_value`)
+
+When testing flows protected by random security codes or background IDs, you can query the DB mid-test and instantly inject the value into subsequent standard or native tap steps.
+
+#### **How to Configure:**
+1. **Action:** Set to `fetch_db_value`.
+2. **Target (Locator):** Write the full `SELECT` statement returning the single value needed.
+3. **Value:** Define the exact variable tracker name (without brackets). The framework saves the data under this key in the runtime cache.
+4. **Usage Downstream:** Reference the mapped value in later steps using standard placeholder syntax (e.g., `{ride_otp}`).
+
+---
+
+### 🧹 2. Database Maintenance (`sql_cleanup`)
+
+Removes test artifacts once a scenario completes to keep the automation environment clean and reusable.
+
+#### **How to Configure:**
+1. **Action:** Set to `sql delete` or `sql_cleanup`.
+2. **Value:** Write the complete `DELETE` or `UPDATE` statement.
+3. **Dynamic Variables:** You can pass runtime placeholders (e.g., `{customerName}`) straight into your query string.
+
+---
+
+### 📊 Excel Implementation Blueprint
+
+Below is an exact blueprint of how to format both data extraction and cleanup workflows in your automation workbooks:
+
+| Test Step Description | Action | Value | Target (XPath / Locator) |
+| :--- | :--- | :--- | :--- |
+| **Pull Live Booking Code** | `fetch_db_value` | `ride_otp` | `SELECT otp FROM we1.user_ride_booking ORDER BY id DESC LIMIT 1;` |
+| Wait for Layout Build | `wait_until_visible` | - | `mobile.driver.otp_view.input` |
+| **Inject Extracted Code** | `type` | `{ride_otp}` | `mobile.driver.otp_view.input` |
+| _--- Suite Transition ---_ | _---_ | _---_ | _---_ |
+| **Remove Test Area** | `sql delete` | `DELETE FROM we1.admin_area_list WHERE name = '{areaName}';` | - |
+| **Remove Auto Driver** | `sql delete` | `DELETE FROM we1.providers WHERE first_name = '{autoName}';` | - |
+| **Remove Bank Details** | `sql delete` | `DELETE FROM we1.provider_bank_details WHERE holder_name = '{autoName}';` | - |
+| Hard State Settle Pause | `wait` | `2` | - |
+
+---
+
+### 📋 Common SQL Query Templates
+
+Use these standardized blocks within your sheets across various modules:
+
+| Module | Purpose | SQL Template Target / Value |
+| :--- | :--- | :--- |
+| **Verification** | Fetching Driver OTP | `SELECT otp FROM we1.user_ride_booking ORDER BY id DESC LIMIT 1;` |
+| **Store/Hotel** | Erasing Test Outlets | `DELETE FROM we1.store_details WHERE name = '{storeName}';` |
+| **Users** | Clearing Test Consumers | `DELETE FROM we1.users WHERE first_name = '{customerName}';` |
+| **Documents** | Purging Upload Profiles | `DELETE FROM we1.required_documents WHERE name = '{documentName}';` |
+| **Promo Codes** | Scrapping Campaign Tokens | `DELETE FROM we1.promocode_details WHERE promo_code = '{promoCodeName}';` |
+
+> **💡 Best Practices:**
+> * **Isolation:** Always structure your cleanup commands inside a dedicated execution tab named `"DataCleanUpSheet"` positioned at the very end of your execution run. Running destructive workflows prematurely will break active transactional dependencies downstream.
+> * **Settling Delays:** Always append a `wait` step of at least 2 seconds immediately following database operations to allow the database connections and application caches to fully stabilize.
+
+----
 
 ## 🔄 16. Sheet-Level Iteration (Stress & Loop Testing)
 
