@@ -5,16 +5,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.interactions.Pause;
-import org.openqa.selenium.Point;
-import org.openqa.selenium.Dimension;
+
 import java.time.Duration;
 import java.util.Collections;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -1636,6 +1634,24 @@ public class TestExecutor {
 				} else {
 					log("❌ Error: Cannot reload app. No active session found in driver pool for role: [" + value + "]");
 				}
+				break;
+
+			case "set_date":
+				log("  → Forcing HTML5 Date input Injection: " + xpath);
+				WebElement dateInput = driver.findElement(By.xpath(xpath));
+
+				// 1. Read the dynamic date string coming straight from your Excel 'Value' cell
+				String excelDateValue = value;
+
+				// 2. Concatenate the dynamic variable into the JavaScript execution string
+				((JavascriptExecutor) driver).executeScript(
+						"arguments[0].value='" + excelDateValue + "';" +
+								"arguments[0].dispatchEvent(new Event('input', { bubbles: true }));" +
+								"arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+						dateInput
+				);
+
+				log("  ✓ Component state updated successfully with date: " + excelDateValue);
 				break;
 
 			case "set_location":

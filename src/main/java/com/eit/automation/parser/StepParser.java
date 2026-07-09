@@ -77,6 +77,12 @@ public class StepParser {
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(select|choose)\\s+file\\b.*", "uploadfile"));
 
 		// ========================================
+		// 5. SET DATE
+		// ========================================
+		// Add to your action keyword mapping blocks
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(set_date|type_date)\\b.*", "set_date"));
+
+		// ========================================
 		// 1. VERIFICATION (Highest Priority - Assertions often start sentence)
 		// ========================================
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(verify|check|assert|ensure)\\b.*", "verify"));

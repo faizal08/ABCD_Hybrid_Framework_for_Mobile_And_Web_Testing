@@ -204,6 +204,13 @@ Every automated instruction written inside **Column E** must follow a strict **3
       <td>"admin.customer name.input"</td>
       <td>Passes a previously saved runtime variable by wrapping its name inside curly braces <code>{variableName}</code>.</td>
     </tr>
+<tr>
+    <td>Enter Date</td>
+    <td><code>set_date</code></td>
+    <td>2026-12-12</td>
+    <td><i>admin.drivers.doc_expiry.input</i></td>
+    <td>2026-12-12 [Enter Date In This Format YYYY-MM-DD]</td>
+  </tr>
     <!-- MOBILE SPECIFIC KEYWORDS SUBSECTION -->
     <tr style="background-color: #fef3c7; font-weight: bold;">
       <td colspan="5" style="color: #b45309; padding: 10px;">📱 SUBSECTION 2: MOBILE SPECIFIC KEYWORDS</td>
@@ -285,7 +292,6 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <td><i>"SELECT otp FROM we1.user_ride_booking ORDER BY id DESC LIMIT 1"[write Query In Place Of Xpath]</i></td>
     <td>Use Any Variable</td>
   </tr>
-
   </tbody>
 </table>
 
@@ -357,6 +363,9 @@ Every automated instruction written inside **Column E** must follow a strict **3
 
 #### **# ✅ “verify” Keyword Format #**
 `Verify Description,verify,,"Locator/Xpath"`
+
+#### **# ✅ To "set_date" in Date Picker #**
+`Enter Date,set_date,2026-12-12[In YYYY-MM-DD Format],"Locator/Xpath"`
 
 ---
 
