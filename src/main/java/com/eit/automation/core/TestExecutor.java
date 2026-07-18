@@ -1507,12 +1507,45 @@ public class TestExecutor {
 
 			case "swipe":
 			case "scroll_mobile":
-				// Read the parameter value from your spreadsheet row (e.g., "up" or "down")
-				String swipeDirection = (value != null && !value.isEmpty()) ? value.trim().toLowerCase() : "up";
+				// 1. Determine direction: prioritize value, but fallback to xpath if value is empty/null
+				String swipeDirection = "up"; // default
+				if (value != null && !value.isEmpty()) {
+					swipeDirection = value.trim().toLowerCase();
+				} else if (xpath != null && !xpath.isEmpty() &&
+						(xpath.trim().equalsIgnoreCase("up") || xpath.trim().equalsIgnoreCase("down") ||
+								xpath.trim().equalsIgnoreCase("left") || xpath.trim().equalsIgnoreCase("right"))) {
+					swipeDirection = xpath.trim().toLowerCase();
+				}
 
-				log("  → Initiating Mobile Swipe Gesture Direction: " + swipeDirection);
-				mobileActions.swipe(swipeDirection);
-				log("  ✓ Swipe sequence completed successfully");
+				// 2. Validate if xpath is a real locator target, or if it's just the direction text
+				boolean hasSpecificTarget = (xpath != null && !xpath.isEmpty() &&
+						!xpath.trim().equalsIgnoreCase("up") &&
+						!xpath.trim().equalsIgnoreCase("down") &&
+						!xpath.trim().equalsIgnoreCase("left") &&
+						!xpath.trim().equalsIgnoreCase("right"));
+
+				if (hasSpecificTarget) {
+					System.out.println("  → Initiating Element-Bounded Swipe [" + swipeDirection + "] on target locator: " + xpath);
+
+					try {
+						org.openqa.selenium.By dynamicSwipeLocator = getDynamicLocator(xpath);
+						WebElement targetElement = wait.until(org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfElementLocated(dynamicSwipeLocator));
+
+						mobileActions.swipeOnElement(targetElement, swipeDirection);
+					} catch (Exception e) {
+						System.out.println("  ❌ Bounded swipe action failed: " + e.getMessage());
+						throw new RuntimeException("Failed to execute bounded swipe on locator: " + xpath, e);
+					}
+				} else {
+					System.out.println("  → Initiating Full-Screen Swipe Direction: " + swipeDirection);
+					try {
+						mobileActions.swipe(swipeDirection);
+					} catch (Exception e) {
+						System.out.println("  ❌ Full-screen swipe action failed: " + e.getMessage());
+						throw new RuntimeException("Failed to execute full-screen swipe", e);
+					}
+				}
+				System.out.println("  ✓ Step Completed Successfully");
 				break;
 
 			case "hide_keyboard":
