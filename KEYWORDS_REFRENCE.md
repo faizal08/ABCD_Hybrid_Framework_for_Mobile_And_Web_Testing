@@ -681,13 +681,33 @@ These keywords allow you to perform strict validation on whether an element shou
 
 **Excel Example:**
 
-| Test Step Description | Action | Value | Target (XPath) |
-| :--- | :--- | :--- | :--- |
-| Map City Boundary | drawpolygon | -120;-120 : 120;-120 : 120;120 : -120;120 | "//div[@class='map-container']" |
+| Test Step Description | Action      | Value                             | Target (XPath) |
+| :--- |:------------|:----------------------------------| :--- |
+| Map City Boundary | drawpolygon | -60;-60 : 60;-60 : 60;60 : -60;60 | "//div[@class='map-container']" |
 
 ---
 
-## 🎲 11. Dynamic Placeholders (Value Column)
+## 📅 11. Date Input & Picker Actions
+
+This keyword allows you to input dates consistently into standard text fields, HTML5 date pickers, or custom calendar components. It formats and simulates keypresses or direct script injections to ensure dates are reliably applied across both Web and Mobile platforms.
+
+| Action | Phrase Examples | Description |
+| :--- | :--- | :--- |
+| **set_date** | `enter date`, `set date` | Clears the target input field and types or injects a formatted date string. Expects the standard **`YYYY-MM-DD`** ISO format. |
+
+**Excel Example:**
+
+| Test Step Description | Action | Value | Target (XPath / Locator) |
+| :--- | :--- | :--- | :--- |
+| Enter License Expiry Date | set_date | 2026-12-12 | admin.drivers.doc_expiry.input |
+| Enter Vehicle Registration Date | set_date | 2026-08-15 | admin.vehicles.reg_date.input |
+
+> **⚠️ IMPORTANT:** Date values provided in the **Value** column MUST always strictly follow the **`YYYY-MM-DD`** format (e.g., `2026-12-12`). Passing dates in other formats (such as `DD/MM/YYYY` or `MM-DD-YYYY`) will result in parsing failures or invalid inputs.
+
+> **💡 Technical Note:** Date inputs often trigger dynamic change listeners or validation scripts upon typing. The `set_date` action automatically fires change/blur events (or triggers a keyboard enter key on mobile) to ensure the framework registers the value properly.
+---
+
+## 🎲 12. Dynamic Placeholders (Value Column)
 
 | Placeholder | Result Example | Best For |
 | :--- | :--- | :--- |
@@ -706,7 +726,7 @@ These keywords allow you to perform strict validation on whether an element shou
 
 ---
 
-## 💾 12. Save & Reuse Logic
+## 💾 13. Save & Reuse Logic
 
 Capture a value in one step to use it in a later step.
 
@@ -734,7 +754,7 @@ Wrap the variable name in curly braces `{}`.
 
 ---
 
-## 💾 13. Runtime Data Extraction & Variable Matching
+## 💾 14. Runtime Data Extraction & Variable Matching
 
 | Action | Phrase Examples (Natural Language) | Description |
 | :--- | :--- | :--- |
